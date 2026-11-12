@@ -89,9 +89,9 @@ workspace, or the plugin proposed here, is that path.
 
 | Provider | Enable | Endpoint / region | Auth | Model names |
 |---|---|---|---|---|
-| Microsoft Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_RESOURCE` or `ANTHROPIC_FOUNDRY_BASE_URL` | `ANTHROPIC_FOUNDRY_API_KEY`, Microsoft Entra ID (default Azure credential chain), or `ANTHROPIC_FOUNDRY_AUTH_TOKEN` | Must match the client's deployment names, e.g. `claude-sonnet-5`, `claude-opus-4-8`, `claude-haiku-4-5`. There is no startup check; a missing deployment fails at request time |
-| Amazon Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | `AWS_REGION` (falls back to `us-east-1`) | AWS default credential chain, `--profile`, `AWS_BEARER_TOKEN_BEDROCK`, or an `awsAuthRefresh` command in settings | Inference-profile ids such as `us.anthropic.claude-opus-5` |
-| Google Cloud (Agent Platform, formerly Vertex AI) | `CLAUDE_CODE_USE_VERTEX=1` | `CLOUD_ML_REGION`, `ANTHROPIC_VERTEX_PROJECT_ID` | Application Default Credentials, `GOOGLE_APPLICATION_CREDENTIALS`, or a `gcpAuthRefresh` command in settings | `claude-opus-5`, `claude-sonnet-4-5@20250929`, … |
+| Microsoft Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_RESOURCE` or `ANTHROPIC_FOUNDRY_BASE_URL` | `ANTHROPIC_FOUNDRY_API_KEY`, Microsoft Entra ID (default Azure credential chain), or `ANTHROPIC_FOUNDRY_AUTH_TOKEN` | Must match the client's deployment names, e.g. `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`. There is no startup check; a missing deployment fails at request time |
+| Amazon Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | `AWS_REGION` (falls back to `us-east-1`) | AWS default credential chain, `--profile`, `AWS_BEARER_TOKEN_BEDROCK`, or an `awsAuthRefresh` command in settings | Inference-profile ids such as `us.anthropic.claude-opus-5-5` |
+| Google Cloud (Agent Platform, formerly Vertex AI) | `CLAUDE_CODE_USE_VERTEX=1` | `CLOUD_ML_REGION`, `ANTHROPIC_VERTEX_PROJECT_ID` | Application Default Credentials, `GOOGLE_APPLICATION_CREDENTIALS`, or a `gcpAuthRefresh` command in settings | `claude-opus-5-5`, `claude-sonnet-5-5`, … |
 | LLM gateway / proxy | provider flag as above | `ANTHROPIC_BASE_URL`, or per-provider `ANTHROPIC_BEDROCK_BASE_URL`, `ANTHROPIC_VERTEX_BASE_URL`, `ANTHROPIC_FOUNDRY_BASE_URL` | whatever the gateway requires | as the underlying provider |
 
 Pin models with `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`,
