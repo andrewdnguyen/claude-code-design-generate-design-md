@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.304",
+  "startedAt": "2026-11-12T23:27:41.235Z",
+  "durationSeconds": 20,
+  "costUsd": 0,
+  "partial": true,
+  "partialReason": "auth_failed",
+  "suite": {
+    "root": "C:\\Users\\andrew.nguyen\\OneDrive - Arup\\Desktop\\claude-code-design-generate-design-md\\plugin",
+    "ablation": "with-without",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "claude-code-design",
+        "version": "0.1.0",
+        "path": "C:\\Users\\andrew.nguyen\\OneDrive - Arup\\Desktop\\claude-code-design-generate-design-md\\plugin"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "asks-path-when-unspecified",
+      "dir": "evals\\asks-path-when-unspecified",
+      "source": "prose",
+      "promptMarkdown": "I need a DESIGN.md for my app.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 5,
+      "graders": [
+        {
+          "name": "no-write",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Write",
+            "min": 0,
+            "max": 0
+          }
+        },
+        {
+          "name": "offers-both-paths",
+          "type": "llm",
+          "weight": 1,
+          "graderMarkdown": "Pass only if the final message asks the user to choose how to generate the DESIGN.md and offers both options: (1) describe the vibe/brand/aesthetic, and (2) scan the codebase for existing colors, fonts and spacing. It must not already have written a DESIGN.md or invented a design.\n",
+          "config": {
+            "criteria": "Pass only if the final message asks the user to choose how to generate the DESIGN.md and offers both options: (1) describe the vibe/brand/aesthetic, and (2) scan the codebase for existing colors, fonts and spacing. It must not already have written a DESIGN.md or invented a design.\n",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "skill-fired",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Skill",
+            "input_match": "\"skill\"\\s*:\\s*\"(?:[\\w-]+:)?generate-design-md\""
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0.5,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0,
+            "judgeCostUsd": 0,
+            "durationSeconds": 18,
+            "startedAt": "2026-11-12T23:27:42.805Z",
+            "error": "exit 1: Not logged in · Please run /login",
+            "tracePath": "C:\\Users\\andrew.nguyen\\AppData\\Local\\Temp\\claude-eval-lxqbmk\\out\\trace.jsonl",
+            "skippedPaidGraders": false,
+            "mocks": {
+              "servers": [
+                {
+                  "server": "plugin_claude-code-design_chrome-devtools",
+                  "kind": "shadow",
+                  "withheld": true,
+                  "tools": []
+                }
+              ],
+              "warnings": [
+                "mocks: \"plugin:claude-code-design:chrome-devtools\" has no mock and is NOT started — its tools are unavailable this run; add mocks/<server>/ to mock it, or pass --allow-real-servers to run the plugin's real server (as you, outside the sandbox)"
+              ],
+              "calls": {
+                "total": 0,
+                "errors": 0,
+                "unmocked": [],
+                "costUsd": 0,
+                "replay": {
+                  "hits": 0,
+                  "misses": 0
+                }
+              }
+            },
+            "graders": [
+              {
+                "name": "no-write",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Write called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "offers-both-paths",
+                "passed": false,
+                "weight": 1,
+                "explanation": "grader threw: judge call failed: Not logged in · Please run /login",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "skill-fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "Skill called 0x (expected 1..∞)",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.5,
+        "passRate": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 1,
+    "casesPassed": 0,
+    "overallScore": 0.5,
+    "overallPassRate": 0
+  }
+}
