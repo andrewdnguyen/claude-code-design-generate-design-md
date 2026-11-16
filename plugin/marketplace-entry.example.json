@@ -7,5 +7,5 @@
     "path": "plugin"
   },
   "description": "Design-grade HTML artifacts (decks, prototypes, wireframes, animated video, design systems) built through skills, commands and a hardened Bash/browser guard.",
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
