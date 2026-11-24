@@ -2,7 +2,7 @@
 name: export-pdf
 description: Export an HTML artifact to PDF via headless Chromium (puppeteer Page.pdf). For multi-slide decks one page per <section>.
 argument-hint: <html-path> [output.pdf]
-allowed-tools: Read Write Bash(node "${CLAUDE_PLUGIN_ROOT}"/scripts/export-pdf.mjs:*) Bash(node --version) Bash(realpath:*) Bash(mkdir -p:*) Bash(which:*) Bash(test:*) Bash(stat:*) Bash(ls:*)
+allowed-tools: Read Write Bash(node "${CLAUDE_PLUGIN_ROOT}"/scripts/export-pdf.mjs:*) Bash(node --version) Bash(realpath:*) Bash(mkdir -p artifacts:*) Bash(which:*) Bash(test:*) Bash(stat:*) Bash(ls:*)
 ---
 
 # Export PDF

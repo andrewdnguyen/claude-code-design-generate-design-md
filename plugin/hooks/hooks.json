@@ -6,16 +6,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/guard-bash.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/guard-bash.sh",
+            "onFailure": "block"
           }
         ]
       },
       {
-        "matcher": "mcp__.*chrome-devtools.*__(navigate_page|new_page|evaluate_script)",
+        "matcher": "mcp__.*chrome-devtools.*__.*",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/guard-browser.py"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/hooks/guard-browser.py",
+            "onFailure": "block"
           }
         ]
       }

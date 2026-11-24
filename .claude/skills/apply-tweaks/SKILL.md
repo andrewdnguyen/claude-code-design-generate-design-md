@@ -29,12 +29,14 @@ If skipping date match (e.g. resume from yesterday), `Bash(ls artifacts/tweaks/)
    - `Read` the target HTML (path from state.yaml or `$0`)
    - Extract the `__tweak_schema` block (JSON inside `<script id="__tweak_schema">`)
 
-3. **Validate each pending key against the typed schema:**
-   - Every key in `pending.yaml` must exist in schema
-   - Value must match the declared type: `color` = `#rrggbb`; `number` = within `[min..max]`; `boolean`; `enum` = one of `options`; `string` = plain text ≤ `maxLength` (default 200), no `<` or `>` (text goes into `textContent`, never markup)
-   - If any key invalid: report which + stop (do not partially apply)
+3. **Validate with code (all or nothing):** if the tweaks came from pasted chat text, first `Write` them to `pending.yaml`. Then run:
+   ```
+   Bash(node scripts/validate-pending.mjs tweaks artifacts/tweaks/<session-id>/pending.yaml --html <html-path>)
+   ```
+   - **Non-zero exit: stop.** Show the script's output (one line per invalid key) to the user. Do not apply a partial set and do not repair values yourself.
+   - **Exit 0:** the JSON on stdout (`{key, type, value}` per entry) is the only thing you may apply. The script checks key names (`[A-Za-z0-9_-]+`), that each key exists in `__tweak_schema`, and the typed value rules (`color` = `#rrggbb`; `number` within `[min..max]`; `boolean`; `enum` one of `options`; `string` plain text ≤ `maxLength`, default 200, no `<`, `>` or newline).
 
-4. **Apply:** for each key → value in pending, by type:
+4. **Apply:** before each `Edit`, read the **previous** value of that key from the HTML you already read (the `--tweak-<key>` value, the schema `"default"`, the attribute, or the element text, whichever the key type uses) and remember it as `previous`. Then for each validated key → value, by type:
    - `color` / `number` / `boolean` — **CSS var on `:root`:** find `--tweak-<key>: <old>;` and `Edit` to new value, **and** update `"default"` for that key in the `__tweak_schema` block. The panel re-applies every schema default on load as an inline style on `<html>`, so a stale default would silently override the CSS var you just edited (boolean: the class toggle also starts from the default)
    - `enum` — `Edit` the schema `"default"` and, if the root element carries `data-tweak-<key>="…"`, that attribute
    - `string` — `Edit` the text content of every element matching `target` (default `[data-tweak="<key>"]`) and the schema `"default"`
@@ -49,8 +51,14 @@ If skipping date match (e.g. resume from yesterday), `Bash(ls artifacts/tweaks/)
    Write artifacts/tweaks/<session-id>/applied/<ts>.yaml:
      applied_at: <ts>
      changes:
-       <copy of pending.yaml>
+       - key: primaryColor
+         value: "#0a5c36"
+         previous: "#D97757"
+       - key: dark
+         value: true
+         previous: false
    ```
+   One entry per changed key, values as JSON scalars. `previous` is always the value read from the HTML before the edit, never a guess.
 
 7. **Clear pending:** `Write artifacts/tweaks/<session-id>/pending.yaml` with empty content (or `{}`)
 
@@ -69,7 +77,7 @@ If skipping date match (e.g. resume from yesterday), `Bash(ls artifacts/tweaks/)
 
 If user says "revert last tweaks":
 1. `Bash(ls artifacts/tweaks/<session-id>/applied/)` — the filenames are `YYYYMMDDTHHMMSSZ.yaml`, so the last one in name order is the most recent
-2. `Read` that file — get the delta
-3. Reverse each change (find current value in HTML, restore previous)
+2. `Read` that file — get the delta (`{key, value, previous}` per change)
+3. Build a pending set with every key's value set to its logged `previous`, `Write` it to `pending.yaml` (format: `key: <JSON value>` per line), and run `Bash(node scripts/validate-pending.mjs tweaks artifacts/tweaks/<session-id>/pending.yaml --html <html-path>)`; stop on a non-zero exit. Then apply the validated set exactly as in Pipeline step 4. If a log entry has no `previous` (older log), stop and tell the user — do not guess a value.
 4. Append a new applied entry with `type: revert` and reference to reverted file
 5. `/done`

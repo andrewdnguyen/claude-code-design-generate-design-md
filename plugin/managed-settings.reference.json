@@ -34,6 +34,7 @@
       "Bash(gh codespace:*)",
       "Bash(gh gist:*)",
       "Bash(gh release:*)",
+      "Bash(gh pr merge --admin:*)",
       "Bash(rm -rf ~:*)",
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
@@ -42,6 +43,8 @@
       "Bash(eval:*)",
       "Bash(printenv:*)",
       "Bash(env)",
+      "WebFetch",
+      "WebSearch",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.gnupg/**)",
@@ -51,11 +54,23 @@
       "Read(~/.claude.json)",
       "Read(~/.netrc)",
       "Read(~/.npmrc)",
+      "Read(~/.git-credentials)",
+      "Read(~/.docker/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.zsh_history)",
+      "Read(~/.bash_history)",
+      "Read(~/.python_history)",
+      "Read(~/.node_repl_history)",
+      "Read(~/Library/Keychains/**)",
       "Read(.env)",
       "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
       "Read(**/credentials*)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
       "Write(~/.claude/**)",
       "Write(~/.claude.json)",
       "Write(~/.ssh/**)",
@@ -95,6 +110,41 @@
       "Edit(.mcp.json)",
       "Edit(scripts/**)",
       "Edit(.git/**)"
+    ],
+    "ask": [
+      "Edit(CLAUDE.md)",
+      "Edit(.claude/skills/**)",
+      "Edit(.claude/commands/**)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)"
     ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "autoAllowBashIfSandboxed": false,
+    "network": {
+      "allowedDomains": [
+        "api.figma.com",
+        "github.com",
+        "api.github.com",
+        "unpkg.com",
+        "cdn.jsdelivr.net",
+        "fonts.googleapis.com",
+        "fonts.gstatic.com",
+        "127.0.0.1:4567"
+      ]
+    },
+    "filesystem": {
+      "denyWrite": [
+        "~/.claude",
+        "~/.ssh",
+        "~/.aws",
+        "~/.config",
+        "~/Library/LaunchAgents"
+      ]
+    }
   }
 }

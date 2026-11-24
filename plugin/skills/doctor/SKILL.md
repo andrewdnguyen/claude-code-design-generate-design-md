@@ -102,6 +102,27 @@ npm install -D pptxgenjs@4.0.1 puppeteer@24.41.0
 
 Then ask them to restart Claude Code and re-run `/doctor`.
 
+### Credentials (print as guidance, never ask for the value)
+
+Only print this when the user has `gh` or `FIGMA_TOKEN` set up, or asks about it. Never ask the user to paste a token into the chat, and never read token files.
+
+```
+GitHub (gh): /ingest-github only clones.
+  Prefer a fine-grained personal access token scoped to the repositories you use, with
+  read-only Contents (add Pull requests: read/write only if you open PRs from Claude Code),
+  and an expiry of 90 days or less:
+    gh auth login --with-token  < token-file      # run it yourself, outside Claude Code
+  A classic token with the `repo` scope can reach every repo you can; avoid it here.
+
+Figma (FIGMA_TOKEN): /ingest-figma only reads files.
+  Create a personal access token with the file content read-only scope and the shortest expiry
+  that works. Export it in your shell profile or a secrets manager, never in a project file.
+  The guard never sends it anywhere except https://api.figma.com/ and refuses to follow redirects
+  with it.
+
+Rotate either token if a session ever printed it, or if an ingested file asked you to share it.
+```
+
 The only repair this skill performs itself: `Bash(mkdir -p artifacts assets/thumbs test)`.
 
 ## Phase 4 — Smoke test

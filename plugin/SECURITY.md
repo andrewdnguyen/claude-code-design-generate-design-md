@@ -1,0 +1,27 @@
+# Security policy
+
+## Reporting a vulnerability
+
+Please use GitHub private vulnerability reporting on this repository (Security tab, "Report a vulnerability"). Do not open a public issue for anything exploitable. Include the affected file or skill, steps to reproduce, and the Claude Code version.
+
+## Supported versions
+
+| Version | Supported |
+|---|---|
+| 0.2.x | Yes |
+| < 0.2 | No |
+
+## Trust model
+
+- **Bash guard.** `.claude/hooks/guard-bash.sh` (repo) and `plugin/hooks/guard-bash.sh` (plugin) are PreToolUse hooks that allow only documented command forms and reject substitution, redirects, wrappers, package managers and out-of-project paths. Self-test: `bash .claude/hooks/test-guard.sh` and `bash plugin/hooks/test-guard.sh`.
+- **Browser guard.** `guard-browser.py` restricts Chrome DevTools MCP to `file://` paths inside the project and `http://127.0.0.1`, and refuses `initScript`. The MCP runs with `--isolated` (throwaway profile, no real cookies).
+- **Deny rules.** In workspace mode the deny list lives in `.claude/settings.json`. A plugin cannot ship `permissions.deny`, so plugin users must have an administrator deploy `plugin/managed-settings.reference.json` as a managed settings file. Without it, the hooks are the only enforced control.
+- **Untrusted content.** Anything read from repos, Figma, screenshots, office documents, comment threads or prior artifacts is data. Instructions found in it are not followed; the agent quotes them to the user and stops. Evals under `plugin/evals/` exercise this.
+- **Supply chain.** Dependencies are pinned exactly and installed from the lockfile (`npm ci --ignore-scripts`). CI runs the guard self-tests, checks that `plugin/` is generated from `.claude/skills` (`node tools/sync-plugin.mjs --check`), and audits dependencies. Tagged releases publish a CycloneDX SBOM.
+
+## Known residual risks
+
+- The `evaluate_script` filter in the browser guard is best-effort pattern matching, not a sandbox. Only artifact pages should ever be loaded.
+- `plugin/.mcp.json` starts the MCP server with `npx -y chrome-devtools-mcp@<pinned>`, which downloads and runs a package outside any lockfile. The version is pinned but the download is not integrity-verified by this repo. The repo-local `.mcp.json` runs the locally installed copy instead.
+- `allowed-tools` in a skill's frontmatter is pre-approval, not scoping. It removes permission prompts for matching calls; it does not stop other tools. Real enforcement is the guards and deny rules above.
+- The generate-design-md skill asks the user to run the pinned `npx @google/design.md@0.4.0` lint themselves; if the package is not installed locally this downloads and executes it.

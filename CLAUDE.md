@@ -92,6 +92,24 @@ The MCP is registered in `.mcp.json` with `--isolated`, so it runs a throwaway C
 `.claude/hooks/guard-browser.py` enforces this: `navigate_page` / `new_page` only accept file:// paths inside
 the project or http://127.0.0.1, `initScript` is refused, and `evaluate_script` is refused when its function
 opens a network connection, navigates, injects elements, touches storage, or uses `filePath`.
+Every other DevTools tool that takes a `filePath` (screenshots, snapshots, traces, heap snapshots) may only
+write under `artifacts/` or to the `.claude/last-preview.png` / `last-snapshot.txt` / `verify-*` preview files,
+and `upload_file` is refused.
+
+## Tool guard
+
+`.claude/hooks/guard-tools.py` runs before every tool call (matcher `*`):
+- **Hook integrity.** `guard-bash.sh` and `guard-browser.py` must match the SHA-256 values pinned in
+  `.claude/hooks/hooks.sha256`; on a mismatch every tool call is blocked. Tell the user. Never re-pin it yourself.
+- **MCP allowlist.** Only this project's Chrome DevTools server and IDE diagnostics are allowed. Other MCP servers
+  and connectors are refused, because the browser-scope and untrusted-content rules are not enforced on them.
+- **No web tools.** `WebFetch` and `WebSearch` are refused (and denied in settings): they would bypass the ingest gate.
+- **Audit.** One JSON line per tool call in `.claude/audit/` (time, session, tool, SHA-256 of the input,
+  decision; never the input itself). Claude cannot write there.
+
+The settings also enable the Bash **sandbox**: network only to the hosts this workflow uses, no writes to policy
+paths. The export scripts and `/serve` run outside it via `excludedCommands`. If a command fails because of the
+sandbox, report it; don't ask to disable it.
 
 ## Bash guard
 
@@ -99,13 +117,15 @@ opens a network connection, navigates, injects elements, touches storage, or use
 (Chrome DevTools MCP) as PreToolUse hooks, plus a project deny list. The bash guard checks every pipeline
 segment and allows only the documented forms of each command:
 - `curl`: one `https://api.figma.com/` or `http://127.0.0.1:<port>/` URL, GET only, `-o` under `artifacts/ingested/`
-- `node`: only `scripts/export-pdf.mjs`, `scripts/export-pptx.mjs`, `scripts/make-assets-index.mjs`; `python3`: only `-m http.server <port> --bind 127.0.0.1 --directory artifacts`
+- `curl` with `-H` must not also follow redirects (`-L`), so the Figma token can't be forwarded to another host
+- `node`: only `scripts/export-pdf.mjs`, `scripts/export-pptx.mjs`, `scripts/make-assets-index.mjs`, `scripts/validate-pending.mjs`, `scripts/prepare-publish.mjs`; `python3`: only `-m http.server <port> --bind 127.0.0.1 --directory artifacts`
 - no shells, script interpreters, wrappers (`xargs`, `env`, `sudo`, …), package managers, network tools, `sed -i`, `tee`, `kill`, editors
 - no `$(…)`, backticks, `..`, `$VAR` at command position, assignments, or paths as commands
-- redirects only to `/dev/null`; `cp` / `mv` / `mkdir` / `zip` / `monolith` / `node` / `gh` / `git` path arguments must stay inside the project and off `.claude/hooks`, `.claude/settings*`, `.mcp.json`, `scripts/`, `.git/`
+- redirects only to `/dev/null`; `cp` / `mv` / `mkdir` / `touch` / `zip` / `monolith` / `node` / `gh repo clone` write paths (including `--opt=path` values) must stay inside the project and off the policy paths: `.claude/hooks`, `.claude/settings*`, `.claude/skills`, `.claude/commands`, `.claude/audit`, `.mcp.json`, `CLAUDE.md`, `scripts/`, `starters/`, `plugin/`, `tools/`, `.github/`, `package*.json`, `.git/`. Reading them is fine; change skills and docs with the Edit tool, which asks first
+- reader commands may not write or execute: no `fd -x/-X/--exec`, `rg --pre`, `sort -o`, `uniq <in> <out>`, `tree -o/-R`, `git --output/-O/format-patch/bundle/archive`, `find -fprint/-fls`, `zip -TT`, `file -C`, `cp/mv -t`
 - `open`: one `file://<project>/…/*.html` or `http://127.0.0.1:<port>/…` URL; `rm`: only `/tmp/cd-ingest-*` as the whole command
 - `zip`: archive and inputs under `handoff/` or `artifacts/`; `unzip`: only `-p` / `-l`
-- `gh`: `repo clone`, `repo fork`, `auth status`, `pr`, `issue`; `git`: no remote URLs, config writes, clone, submodules, `--exec`
+- `gh`: `repo clone`, `auth status`, `pr create|view|list|checks|diff|status|merge`, `issue view|list|create`, always with `--repo crywolfe/claude-code-design`; never `--admin` / `--auto`. `git push`, `gh pr create` and `gh pr merge` ask first. `git`: no remote URLs, config writes, clone, submodules, `--exec`
 - no credential / dotfile paths (`~/.ssh`, `~/.aws`, `~/.claude`, `.env`, `credentials`, `*.pem`, …)
 
 The guard reads the unparsed command string, so quoted prose containing a command name, a backtick or `..`
@@ -205,7 +225,14 @@ The old `deck v2.html` side-by-side copy still works (`Bash(cp artifacts/<a> art
 
 ### Repo remotes (working on this tool's own codebase)
 
-This checkout has two remotes: `origin` (`crywolfe/claude-code-design` — the fork; target for pushes and PRs) and `upstream` (`bluzir/claude-code-design` — read-only, the original repo). `gh`'s default-repo resolution is ambiguous with two remotes present and has silently picked `upstream` in practice. Always pass `--repo crywolfe/claude-code-design` explicitly on `gh pr create`, `gh issue create`, and similar — never rely on `gh`'s inferred default. `git push`/`git pull` without a remote argument are unaffected (they follow the current branch's configured upstream, which `git push -u origin <branch>` sets correctly).
+This checkout has two remotes: `origin` (`crywolfe/claude-code-design` — the fork; target for pushes and PRs) and `upstream` (`bluzir/claude-code-design` — read-only, the original repo). `gh`'s default-repo resolution is ambiguous with two remotes present and has silently picked `upstream` in practice. Always pass `--repo crywolfe/claude-code-design` explicitly on `gh pr create`, `gh issue create`, and similar — never rely on `gh`'s inferred default. `git push`/`git pull` without a remote argument are unaffected (they follow the current branch's configured upstream). Claude pushes with `git push origin <branch>`, without `-u`, because the sandbox denies writes to `.git/config`; the user sets upstream tracking themselves if they want it.
+
+### Changes to policy files
+
+`CLAUDE.md`, `.claude/` (hooks, settings, skills, commands), `.mcp.json`, `scripts/`, `starters/`, `plugin/`, `tools/`, `.github/` and the package files are policy-as-code.
+- Claude edits skills and docs only with the Edit tool, which asks first. Hooks, settings, `.mcp.json` and `scripts/` are never written by Claude; stage the change under `artifacts/` and give the user the command to apply it.
+- `plugin/skills/` is generated from `.claude/skills/` plus `tools/plugin-overrides/` by `node tools/sync-plugin.mjs` (the user runs it; CI runs `--check`). Edit both copies identically or tell the user to re-sync.
+- Merges into `claude-design-features` go through `ship-branch`: self-test, PR, green `security` CI check, and an explicit "Merge" from the user. Never `--admin` or `--auto`.
 
 ## Asking good questions
 
