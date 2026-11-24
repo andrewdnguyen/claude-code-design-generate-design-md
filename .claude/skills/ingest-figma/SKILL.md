@@ -25,6 +25,12 @@ Extract:
 - `fileKey` — alphanumeric after `/file/` or `/design/`
 - `nodeId` — query param `node-id` (URL-decoded, often contains `:`)
 
+Validate both before they go into a URL. Stop and show the user the value if either fails; never "clean up" a value and continue:
+- `fileKey` must match `^[A-Za-z0-9]{10,64}$`
+- `nodeId` must match `^[0-9]+[:-][0-9]+$`. Convert a `-` to `:` for the API (`12-34` → `12:34`). One node per run.
+
+Token hygiene: suggest a personal access token with read-only scopes and an expiry date, not a token that can write or never expires.
+
 ## Steps (token path)
 
 0. `Bash(mkdir -p artifacts/ingested)`. The commands below must begin exactly with `curl https://api.figma.com/v1/files/` — that literal prefix is the only curl the permission set allows, and the bash guard additionally rejects any upload/method flag. GET only, one line, no line continuations.

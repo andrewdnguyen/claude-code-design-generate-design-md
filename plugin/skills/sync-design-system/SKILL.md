@@ -2,7 +2,7 @@
 name: sync-design-system
 description: Push a registered design system (design-systems/<name>/) to a Claude Design design-system project on claude.ai, one component at a time, through the built-in DesignSync tool. Use when user says "sync to Claude Design", "push the design system to claude.ai", "design-sync".
 argument-hint: <design-system-name> [--project <uuid>] [--dry-run]
-allowed-tools: Read Write Glob Grep Bash(ls design-systems:*) Bash(test -d design-systems/:*) Bash(mkdir -p design-systems/:*) DesignSync
+allowed-tools: Read Write Glob Grep Bash(ls design-systems:*) Bash(test -d design-systems/:*) Bash(mkdir -p design-systems/:*) Bash(shasum -a 256 design-systems/:*) DesignSync
 ---
 
 # Sync Design System
@@ -50,6 +50,7 @@ design-systems/<name>/sync/
 
 ## Phase 4 — Finalize and write
 
+0. Classification. The project is visible to everyone in the org who has access to it. Before finalizing, ask with `AskUserQuestion`: "What is in this bundle?" with options "Brand assets cleared for the org", "Contains confidential or unreleased material" and "Don't push". Push only on the first option; on the second, stop and suggest removing that material from `design-systems/<name>/` first. Note the time of the answer as `approved_at`.
 1. After the user approves the table: `DesignSync({method: "finalize_plan", projectId, writes: [<exact paths or globs>], deletes: [<only what the user named>], localDir: "design-systems/<name>/sync"})` → `planId`.
 2. `DesignSync({method: "write_files", projectId, planId, files: [{path, localPath}]})` — `localPath` for everything (max 256 per call; batch if larger).
 3. Deletes only if the plan had them: `DesignSync({method: "delete_files", …})`.
@@ -58,6 +59,9 @@ design-systems/<name>/sync/
 ## Phase 5 — Record + report
 
 - Update `design-systems/<name>/manifest.json`: `synced_project_id`, `synced_at`.
+- Record exactly what was pushed. Hash the written files in one command, `Bash(shasum -a 256 design-systems/<name>/sync/<path1> design-systems/<name>/sync/<path2> ...)`, then `Write` a new file `design-systems/<name>/sync-log/<ISO8601>.json` (outside `sync/`, so it is never uploaded):
+  `{ "project_id": "...", "plan_id": "...", "classification": "brand assets cleared for the org", "approved_at": "...", "written_at": "...", "files": [ { "path": "...", "sha256": "..." } ], "deleted": [ ... ] }`
+  One file per run; never edit or delete an earlier log.
 - Report: project name, files written, files skipped, anything left remote-only, and the reminder that the project is now editable on claude.ai/design by anyone with access to it.
 
 ## Rules

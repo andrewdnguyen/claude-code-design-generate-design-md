@@ -111,6 +111,15 @@ The settings also enable the Bash **sandbox**: network only to the hosts this wo
 paths. The export scripts and `/serve` run outside it via `excludedCommands`. If a command fails because of the
 sandbox, report it; don't ask to disable it.
 
+### Maintainer settings
+
+The committed `settings.json` is the policy for every checkout, including forks. A maintainer may widen it on their
+own machine only, in the gitignored `.claude/settings.local.json`, by adding `sandbox.excludedCommands` entries for
+the exact git and `gh` forms the guard already allows (`git checkout -b`, `git add`, `git commit`,
+`git push origin`, `gh pr …`, `gh issue …`, `gh auth status`). Those commands then run outside the sandbox, but the
+guard, the deny rules and the ask rules still apply. A local file can only add: it cannot lift a `deny` in
+`settings.json`. Claude never writes that file; without it, `ship-branch` hands git and `gh` steps to the user.
+
 ## Bash guard
 
 `.claude/settings.json` registers `.claude/hooks/guard-bash.sh` (Bash) and `.claude/hooks/guard-browser.py`
