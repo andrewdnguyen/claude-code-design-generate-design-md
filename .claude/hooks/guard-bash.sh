@@ -353,12 +353,15 @@ while IFS= read -r seg || [[ -n "$seg" ]]; do
     re_git_cfg='^[[:space:]]*git[[:space:]]+config[[:space:]]'
     re_git_cfg_ok='^[[:space:]]*git[[:space:]]+config[[:space:]]+(--get|--list|-l|--show-origin)([[:space:]]|$)'
     # Anything that rewrites the working tree could swap in an older hook or settings file
-    # (they are tracked in this repo), so only branch creation at HEAD is allowed from here.
+    # (they are tracked in this repo), so only branch creation at HEAD is allowed from here,
+    # plus returning to claude-design-features and fast-forwarding it from origin: that branch
+    # only holds merged, CI-checked work, and hooks.sha256 moves together with the hooks.
     re_git_newbranch='^[[:space:]]*git[[:space:]]+(checkout[[:space:]]+-b|switch[[:space:]]+-c)[[:space:]]+[A-Za-z0-9._/-]+[[:space:]]*$'
+    re_git_sync='^[[:space:]]*git[[:space:]]+((checkout|switch)[[:space:]]+claude-design-features|pull[[:space:]]+--ff-only[[:space:]]+origin[[:space:]]+claude-design-features)[[:space:]]*$'
     re_git_tree='^[[:space:]]*git[[:space:]]+(checkout|switch|restore|reset|stash|merge|rebase|revert|cherry-pick|apply|am|pull|clean|worktree|read-tree|update-index|update-ref|mv|rm|gc|prune)([[:space:]]|$)'
     re_git_bad='^[[:space:]]*git[[:space:]]+(-c[[:space:]]|-C[[:space:]]|--git-dir|--work-tree|--exec-path|clone|daemon|send-email|svn|instaweb|filter-branch|filter-repo|submodule|difftool|mergetool|bisect|credential|remote[[:space:]]+(add|set-url|rename)|(push|fetch|pull)[[:space:]]+.*(://|@))'
     if [[ "$bare" =~ $re_git_bad ]]; then deny "git: remote URLs, config writes, clone, submodules and external tools are not allowed"; fi
-    if [[ "$bare" =~ $re_git_tree ]] && ! [[ "$bare" =~ $re_git_newbranch ]]; then deny "git: commands that rewrite the working tree (checkout, restore, reset, stash, merge, rebase, pull, apply, …) are not allowed here; only 'git checkout -b <name>' / 'git switch -c <name>'. Switch branches or restore files in your own shell."; fi
+    if [[ "$bare" =~ $re_git_tree ]] && ! [[ "$bare" =~ $re_git_newbranch ]] && ! [[ "$bare" =~ $re_git_sync ]]; then deny "git: commands that rewrite the working tree (checkout, restore, reset, stash, merge, rebase, pull, apply, …) are not allowed here; only 'git checkout -b <name>' / 'git switch -c <name>', 'git checkout claude-design-features' and 'git pull --ff-only origin claude-design-features'. Switch branches or restore files in your own shell."; fi
     if [[ "$bare" =~ $re_git_cfg ]] && ! [[ "$bare" =~ $re_git_cfg_ok ]]; then deny "git config: read-only (--get, --list)"; fi
   fi
 
