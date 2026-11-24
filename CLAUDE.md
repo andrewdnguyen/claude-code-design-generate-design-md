@@ -130,7 +130,7 @@ segment and allows only the documented forms of each command:
 - `node`: only `scripts/export-pdf.mjs`, `scripts/export-pptx.mjs`, `scripts/make-assets-index.mjs`, `scripts/validate-pending.mjs`, `scripts/prepare-publish.mjs`; `python3`: only `-m http.server <port> --bind 127.0.0.1 --directory artifacts`
 - no shells, script interpreters, wrappers (`xargs`, `env`, `sudo`, …), package managers, network tools, `sed -i`, `tee`, `kill`, editors
 - no `$(…)`, backticks, `..`, `$VAR` at command position, assignments, or paths as commands
-- redirects only to `/dev/null`; `cp` / `mv` / `mkdir` / `touch` / `zip` / `monolith` / `node` / `gh repo clone` write paths (including `--opt=path` values) must stay inside the project and off the policy paths: `.claude/hooks`, `.claude/settings*`, `.claude/skills`, `.claude/commands`, `.claude/audit`, `.mcp.json`, `CLAUDE.md`, `scripts/`, `starters/`, `plugin/`, `tools/`, `.github/`, `package*.json`, `.git/`. Reading them is fine; change skills and docs with the Edit tool, which asks first
+- redirects only to `/dev/null`; `cp` / `mv` / `mkdir` / `touch` / `zip` / `monolith` / `node` / `gh repo clone` write paths (including `--opt=path` values) must stay inside the project and off the policy paths: `.claude/hooks`, `.claude/settings*`, `.claude/skills`, `.claude/commands`, `.claude/audit`, `.mcp.json`, `CLAUDE.md`, `scripts/`, `starters/`, `plugin/`, `tools/`, `.github/`, `package*.json`, `.git/`. Reading them is fine; change skills and docs with the Edit tool
 - reader commands may not write or execute: no `fd -x/-X/--exec`, `rg --pre`, `sort -o`, `uniq <in> <out>`, `tree -o/-R`, `git --output/-O/format-patch/bundle/archive`, `find -fprint/-fls`, `zip -TT`, `file -C`, `cp/mv -t`
 - `open`: one `file://<project>/…/*.html` or `http://127.0.0.1:<port>/…` URL; `rm`: only `/tmp/cd-ingest-*` as the whole command
 - `zip`: archive and inputs under `handoff/` or `artifacts/`; `unzip`: only `-p` / `-l`
@@ -239,7 +239,7 @@ This checkout has two remotes: `origin` (`crywolfe/claude-code-design` — the f
 ### Changes to policy files
 
 `CLAUDE.md`, `.claude/` (hooks, settings, skills, commands), `.mcp.json`, `scripts/`, `starters/`, `plugin/`, `tools/`, `.github/` and the package files are policy-as-code.
-- Claude edits skills and docs only with the Edit tool, which asks first. Hooks, settings, `.mcp.json` and `scripts/` are never written by Claude; stage the change under `artifacts/` and give the user the command to apply it.
+- Claude edits skills and docs only with the Edit tool, never through Bash (the guard and the sandbox refuse shell writes to these paths). Every such change reaches `claude-design-features` only through a PR, the `security` CI check and the user's "Merge". Hooks, settings, `.mcp.json` and `scripts/` are never written by Claude; stage the change under `artifacts/` and give the user the command to apply it.
 - `plugin/skills/` is generated from `.claude/skills/` plus `tools/plugin-overrides/` by `node tools/sync-plugin.mjs` (the user runs it; CI runs `--check`). Edit both copies identically or tell the user to re-sync.
 - Merges into `claude-design-features` go through `ship-branch`: self-test, PR, green `security` CI check, and an explicit "Merge" from the user. Never `--admin` or `--auto`.
 
