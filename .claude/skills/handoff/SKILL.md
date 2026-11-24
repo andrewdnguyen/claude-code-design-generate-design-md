@@ -23,11 +23,14 @@ Mirror of Claude Design's "Handoff" export: a self-describing bundle a developer
    Bash(mkdir -p handoff/<name>/src/components)
    ```
 
-3. **Copy the source as-is:**
-   - `Bash(cp artifacts/<path> handoff/<name>/src/<name>.html)`
-   - Every `<script src="./x.jsx">` / `.js` sibling the HTML references: `Bash(cp artifacts/<dir>/x.jsx handoff/<name>/src/x.jsx)` (spell each path literally).
+3. **Copy the source with dev-only tooling removed** (preview-time tools such as live reload, the editor overlay and the sketch pad are not part of the design). Stripping is done by code, never by hand:
+   ```
+   Bash(node scripts/prepare-publish.mjs artifacts/<path> --strip-only --out handoff/<name>/src/<name>.html)
+   ```
+   - Non-zero exit: stop and show the output (exit 4 means dev-only content survived stripping).
+   - On success the JSON lists `stripped` (what was removed) and `local_refs` (the sibling files the cleaned HTML still references). `Bash(cp artifacts/<dir>/x.jsx handoff/<name>/src/x.jsx)` each entry of `local_refs` (spell each path literally). Never copy a file that was `stripped`: dev-only scripts and their siblings stay out of the bundle.
+   - Never `cp` the source HTML itself into the bundle.
    - `Bash(cp .claude/last-preview.png handoff/<name>/reference.png)` if it exists.
-   - Any `<script … data-dev-only>` tag (live reload, editor overlay, sketch pad) is removed from the copy before bundling, and its sibling file is not copied. These are preview-time tools, not part of the design.
 
 4. **Extract components.** `Read` the HTML. For every inline `<script type="text/babel">` block, split top-level `function Foo(...)` / `const Foo = (...) =>` React components into `handoff/<name>/src/components/<Foo>.jsx` via `Write`, each ending with `export default Foo;`. Keep the app entry (`ReactDOM.createRoot(...)`) in `src/App.jsx`. Non-React artifacts (plain decks): skip this step and say so in the README.
 

@@ -43,6 +43,13 @@ artifacts/ingested/
 # MCP server state (Serena keeps a per-machine project index here)
 .serena/
 
+# Eval run output is local-only: partial/invalid runs and reports embed contributor-specific
+# paths and usernames. Publish a curated summary instead if one is needed.
+plugin/evals/results/
+
+# Local audit trail written by the guard hooks (per-machine, may hold session ids)
+.claude/audit/
+
 # Python bytecode cache (e.g. from `python3 -m py_compile` on guard-browser.py)
 __pycache__/
 

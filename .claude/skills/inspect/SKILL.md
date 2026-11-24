@@ -2,7 +2,7 @@
 name: inspect
 description: Resolve a natural-language element description ("the red button in the hero", "the third card from the top") to a concrete DOM element in the current preview + source-code location. Uses Chrome DevTools MCP take_snapshot UIDs for deterministic targeting. Use when user asks to change/style/remove a specific visual element without pointing at source code.
 argument-hint: <natural-language description>
-allowed-tools: Read Grep Glob mcp__chrome-devtools__take_snapshot mcp__chrome-devtools__evaluate_script mcp__chrome-devtools__take_screenshot
+allowed-tools: Read Grep Glob mcp__chrome-devtools__take_snapshot mcp__chrome-devtools__take_screenshot
 ---
 
 # Inspect

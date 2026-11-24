@@ -3,6 +3,7 @@ name: ingest-figma
 description: Pull design tokens + frame structure from a Figma URL via the Figma REST API. Requires FIGMA_TOKEN env var.
 argument-hint: <figma-url>
 allowed-tools: Read Write Bash(curl https://api.figma.com/v1/files/:*) Bash(mkdir -p artifacts/ingested) Bash(test:*) Bash(echo FIGMA_TOKEN-present) Bash(realpath:*)
+disallowed-tools: WebFetch WebSearch Artifact ArtifactComments ArtifactData DesignSync Agent
 ---
 
 # Ingest Figma

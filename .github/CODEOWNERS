@@ -1,0 +1,14 @@
+# Policy-as-code: changes to the agent's rules, guards, skills, scripts, CI and dependencies
+# need review from the owner. With one maintainer this only labels the review; the required
+# `security` status check in branch protection is what blocks a bad merge (see SECURITY.md).
+CLAUDE.md               @crywolfe
+/.claude/               @crywolfe
+/.mcp.json              @crywolfe
+/scripts/               @crywolfe
+/starters/              @crywolfe
+/plugin/                @crywolfe
+/tools/                 @crywolfe
+/.github/               @crywolfe
+/package.json           @crywolfe
+/package-lock.json      @crywolfe
+/SECURITY.md            @crywolfe

@@ -1,7 +1,7 @@
 ---
 description: Screenshot current preview; optionally run JS between captures
 argument-hint: <output.png> [--step "js1" --step "js2" ...]
-allowed-tools: mcp__chrome-devtools__evaluate_script mcp__chrome-devtools__take_screenshot
+allowed-tools: mcp__chrome-devtools__take_screenshot
 ---
 
 Capture screenshots of whatever Chrome DevTools MCP has open. Supports multi-step capture with JS between frames.

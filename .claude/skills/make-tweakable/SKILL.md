@@ -2,7 +2,7 @@
 name: make-tweakable
 description: Add an in-artifact floating Tweaks panel that lets the user adjust colors, fonts, spacing, layout variants live in the preview. Persists via claude-pipe pattern (pending.yaml + apply-tweaks skill).
 argument-hint: <html-path> [keys to expose]
-allowed-tools: Read Write Edit Glob Grep Bash(mkdir -p artifacts:*) mcp__chrome-devtools__navigate_page mcp__chrome-devtools__take_screenshot mcp__chrome-devtools__take_snapshot mcp__chrome-devtools__list_console_messages mcp__chrome-devtools__evaluate_script
+allowed-tools: Read Write Edit Glob Grep Bash(mkdir -p artifacts:*) mcp__chrome-devtools__navigate_page mcp__chrome-devtools__take_screenshot mcp__chrome-devtools__take_snapshot mcp__chrome-devtools__list_console_messages
 ---
 
 # Make Tweakable

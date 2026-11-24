@@ -3,6 +3,7 @@ name: ingest-document
 description: Extract design tokens (theme colors, fonts) and outline text from a PPTX, DOCX, XLSX or PDF the user provides, so a deck or design system can be rooted in an existing document. Use when user says "from this deck", "match our slides", "use this brand PDF", or gives a .pptx/.docx/.xlsx/.pdf path.
 argument-hint: <path-to-document>
 allowed-tools: Read Write Bash(unzip -l:*) Bash(unzip -p:*) Bash(head -c:*) Bash(mkdir -p artifacts/ingested) Bash(date:*) Bash(test:*) Bash(ls:*)
+disallowed-tools: WebFetch WebSearch Artifact ArtifactComments ArtifactData DesignSync Agent
 ---
 
 # Ingest Document

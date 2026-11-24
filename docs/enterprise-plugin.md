@@ -175,9 +175,9 @@ An auditor will ask what leaves the machine. Complete list for this workspace:
 | Destination | Initiated by | Gate | Required? |
 |---|---|---|---|
 | Inference endpoint (Anthropic API, Foundry, Bedrock, Vertex, or gateway) | Claude Code itself, every turn | provider env flags; not visible to hooks | yes |
-| npm registry | `npx chrome-devtools-mcp@1.9.0` on every MCP start, per `.mcp.json` | version pinned; **no integrity hash**; the client should vendor the package or point npm at an internal registry | yes, for preview |
+| npm registry | workspace: `npm ci` from the lockfile, run by the user; `.mcp.json` then starts the installed copy with `npx --no-install`. Plugin: `npx -y chrome-devtools-mcp@1.9.0` on every MCP start, per `plugin/.mcp.json` | workspace: lockfile integrity hashes. Plugin: version pinned, **no integrity hash**; the client should vendor the package or point npm at an internal registry | yes, for preview |
 | Chrome / Chromium | the MCP launches Chrome with `--isolated`; Chrome's own background traffic is not controlled by this repo | none from this repo | yes, for preview |
-| github.com | `gh repo clone` in `ingest-github`, after an explicit yes | guard-bash allows only `repo clone`, `repo fork`, `auth status`, `pr`, `issue`; `gh api` denied | optional |
+| github.com | `gh repo clone` in `ingest-github`, after an explicit yes | guard-bash allows only `repo clone`, `auth status`, `pr create/view/list/checks/diff/status`, `issue view/list/create` (workspace also `pr merge`, and `pr`/`issue` must name the fork with `--repo`); never `--admin`/`--auto`; `gh api` denied | optional |
 | api.figma.com | `curl` GET in `ingest-figma`, after an explicit yes | guard-bash allows one `https://api.figma.com/` URL, GET, `-o` under `artifacts/ingested/` | optional |
 | fonts.googleapis.com, fonts.gstatic.com | artifact pages and export scripts | script hosts limited to unpkg + Google Fonts in the export scripts | optional (fonts fall back) |
 | unpkg.com | React/Babel artifacts, pinned with SRI hashes | export scripts refuse other hosts | optional |

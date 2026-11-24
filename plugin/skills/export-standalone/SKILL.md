@@ -2,7 +2,7 @@
 name: export-standalone
 description: Bundle an HTML artifact into a single self-contained file with all CSS/JS/images inlined as data URLs. Requires `monolith` CLI (brew install monolith).
 argument-hint: <input.html> [output.html]
-allowed-tools: Read Write Bash(monolith --isolate --no-metadata:*) Bash(realpath:*) Bash(mkdir -p:*) Bash(which:*) Bash(ls:*) Bash(stat:*)
+allowed-tools: Read Write Bash(monolith --isolate --no-metadata:*) Bash(realpath:*) Bash(mkdir -p artifacts:*) Bash(which:*) Bash(ls:*) Bash(stat:*)
 ---
 
 # Export Standalone
@@ -22,7 +22,11 @@ Produce a single HTML file that works offline (no external dependencies). Uses `
    - `$1` = output HTML (default: `<input>-standalone.html`)
    - If the output directory does not exist: `Bash(mkdir -p <output-dir>)` with the literal directory (no command substitution)
 
-2. Drop dev-only scripts. Any `<script … data-dev-only>` tag (live reload, editor overlay, sketch pad) is removed from the copy before bundling, and its sibling file is not copied. These are preview-time tools, not part of the design. Before running monolith, `Write` a copy of the input to `artifacts/<name>-nodev.html` with every `[data-dev-only]` script tag removed and run monolith on that copy.
+2. Drop dev-only tooling (live reload, editor overlay, sketch pad: preview-time tools, not part of the design) with code, not by hand. Create the cleaned copy next to the input so relative references still resolve:
+   ```
+   Bash(node "${CLAUDE_PLUGIN_ROOT}"/scripts/prepare-publish.mjs artifacts/<dir>/<name>.html --strip-only --out artifacts/<dir>/<name>-nodev.html)
+   ```
+   Non-zero exit: stop and show the output (exit 4 = dev-only content survived). Run monolith on that copy only, never on the original.
 
 3. Run monolith on the nodev copy:
    ```

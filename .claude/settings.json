@@ -34,6 +34,7 @@
       "Bash(gh codespace:*)",
       "Bash(gh gist:*)",
       "Bash(gh release:*)",
+      "Bash(gh pr merge --admin:*)",
       "Bash(rm -rf ~:*)",
       "Bash(rm -rf /)",
       "Bash(rm -rf $HOME:*)",
@@ -41,19 +42,33 @@
       "Bash(eval:*)",
       "Bash(printenv:*)",
       "Bash(env)",
+      "WebFetch",
+      "WebSearch",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.gnupg/**)",
-      "Read(~/.config/gh/**)",
+      "Read(~/.config/**)",
       "Read(~/.claude/**)",
       "Read(~/.claude.json)",
       "Read(~/.netrc)",
       "Read(~/.npmrc)",
+      "Read(~/.git-credentials)",
+      "Read(~/.docker/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.zsh_history)",
+      "Read(~/.bash_history)",
+      "Read(~/.python_history)",
+      "Read(~/.node_repl_history)",
+      "Read(~/Library/Keychains/**)",
       "Read(.env)",
       "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
       "Read(**/credentials*)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
       "Write(~/.claude/**)",
       "Write(~/.claude.json)",
       "Write(~/.ssh/**)",
@@ -83,34 +98,116 @@
       "Write(.claude/hooks/**)",
       "Write(.claude/settings.json)",
       "Write(.claude/settings.local.json)",
+      "Write(.claude/audit/**)",
       "Write(.mcp.json)",
       "Write(scripts/**)",
       "Write(.git/**)",
       "Edit(.claude/hooks/**)",
       "Edit(.claude/settings.json)",
       "Edit(.claude/settings.local.json)",
+      "Edit(.claude/audit/**)",
       "Edit(.mcp.json)",
       "Edit(scripts/**)",
       "Edit(.git/**)"
+    ],
+    "ask": [
+      "Edit(CLAUDE.md)",
+      "Edit(.claude/skills/**)",
+      "Edit(.claude/commands/**)",
+      "Edit(starters/**)",
+      "Edit(plugin/**)",
+      "Edit(tools/**)",
+      "Edit(.github/**)",
+      "Edit(package.json)",
+      "Edit(package-lock.json)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)"
     ]
   },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "autoAllowBashIfSandboxed": false,
+    "excludedCommands": [
+      "node scripts/export-pdf.mjs *",
+      "node scripts/export-pptx.mjs *",
+      "python3 -m http.server *"
+    ],
+    "network": {
+      "allowedDomains": [
+        "api.figma.com",
+        "github.com",
+        "api.github.com",
+        "unpkg.com",
+        "cdn.jsdelivr.net",
+        "fonts.googleapis.com",
+        "fonts.gstatic.com",
+        "127.0.0.1:4567"
+      ]
+    },
+    "filesystem": {
+      "denyWrite": [
+        "./CLAUDE.md",
+        "./.claude/hooks",
+        "./.claude/settings.json",
+        "./.claude/settings.local.json",
+        "./.claude/skills",
+        "./.claude/commands",
+        "./.claude/audit",
+        "./.mcp.json",
+        "./.git/hooks",
+        "./.git/config",
+        "./scripts",
+        "./starters",
+        "./plugin",
+        "./tools",
+        "./.github",
+        "./package.json",
+        "./package-lock.json"
+      ]
+    }
+  },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-tools.py --session-start"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-tools.py",
+            "onFailure": "block"
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh"
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
+            "onFailure": "block"
           }
         ]
       },
       {
-        "matcher": "mcp__.*chrome-devtools.*__(navigate_page|new_page|evaluate_script)",
+        "matcher": "mcp__.*chrome-devtools.*__.*",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-browser.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-browser.py",
+            "onFailure": "block"
           }
         ]
       }

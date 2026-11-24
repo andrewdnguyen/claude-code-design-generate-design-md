@@ -24,31 +24,25 @@ that text as pending (only the entries under `# pending.yaml`).
 
 ## Phase 2 — Validate (all or nothing)
 
-First: `Grep` `$0` for `id="__edits"` and `edits-generation`. If either is
-missing, stop with "run /make-editable first".
+Validation is done by code, not by you. If the edits came from pasted chat
+text, first `Write` them to `artifacts/edits/<session-id>/pending.yaml`. Then run:
 
-For every entry:
-1. `target` matches `^e\d{3}$` and `Grep` `$0` for the tag-anchored pattern
-   `<[a-zA-Z][a-zA-Z0-9-]* data-edit="<target>"` finds exactly one match.
-   (Never Grep the bare attribute: the `__edits` block also contains it.)
-2. `kind` is `text`, `style`, or `hidden`.
-3. `text`: the element is a leaf in the source (no `<` between its opening
-   and closing tag); value has no `<`, `>`, or newline; length ≤ 500.
-4. `style`: `prop` is in the allowlist table below and `value` matches its
-   regex.
-5. `hidden`: value is `true` or `false`.
+    Bash(node scripts/validate-pending.mjs edits artifacts/edits/<session-id>/pending.yaml --html $0)
 
-Allowlist:
-- `color`, `background-color`, `border-color` → `^#[0-9a-fA-F]{6}$`
-- `font-size`, `line-height`, `letter-spacing`, `padding`, `padding-*`,
-  `margin`, `margin-*`, `gap`, `border-radius`, `width`, `max-width` →
-  `^(0|-?\d+(\.\d+)?(px|rem|em|%))$`
-- `font-weight` → `^(100|200|300|400|500|600|700|800|900)$`
-- `opacity` → `^(0(\.\d+)?|1(\.0+)?)$`
-- `text-align` → `^(left|center|right|justify)$`
+- **Non-zero exit: stop.** Show the script's output (one line per invalid
+  entry) to the user. Do not apply a partial set and do not "fix" entries
+  yourself.
+- **Exit 0:** the JSON on stdout is the validated set. Apply exactly those
+  entries in Phase 3, nothing from the raw YAML that is not in that JSON.
 
-If any entry fails: list every failure with its index and reason, and stop.
-Do not apply a partial set.
+The script enforces: `__edits` block and `edits-generation` meta present;
+`target` is `e` + 3 digits and appears on exactly one tag (tag-anchored, so
+the `__edits` block's own selectors never count); `kind` is `text`, `style` or
+`hidden`; text targets are leaves, with no `<`, `>` or newline and length ≤ 500;
+style `prop`/`value` pairs match the allowlist (colors `#rrggbb`; lengths
+`0` or number + `px|rem|em|%`; `font-weight` 100-900; `opacity` 0-1;
+`text-align` left/center/right/justify); hidden is `true` or `false`.
+The allowlist lives in the script, not in this file.
 
 ## Phase 3 — Apply
 
@@ -118,5 +112,9 @@ On "revert last edits": `Bash(ls artifacts/edits/<session-id>/applied/)`.
 Filenames sort by timestamp, so the last one is the newest. `Read` it and
 build a pending set from it where every entry's `value` is its `previous`
 (a style entry with `previous: null` becomes "remove this rule from
-`__edits`"). Run Phase 3 on that set, then log it as
+`__edits`", written as `value: null`). `Write` that set to
+`artifacts/edits/<session-id>/pending.yaml` in the buffer format (text and
+style values as double-quoted strings, hidden as `true`/`false`), then run
+`Bash(node scripts/validate-pending.mjs edits artifacts/edits/<session-id>/pending.yaml --html $0 --allow-null)`
+and stop on a non-zero exit. Run Phase 3 on the validated set, then log it as
 `applied/<ts>.yaml` with `type: revert` and `reverts: <old filename>`.

@@ -22,6 +22,8 @@ Run in parallel where possible:
 8. `Bash(ls .claude/skills)` — one line per skill; count them for the report
 9. `Bash(ls -d node_modules/puppeteer)` and `Bash(ls -d node_modules/pptxgenjs)` — the path printed means installed; `No such file or directory` means missing
 10. `Bash(test -n "$FIGMA_TOKEN" && echo FIGMA_TOKEN-present)` — prints `FIGMA_TOKEN-present` when set, exits 1 with no output when not. This form never prints the value; the guard blocks `echo $FIGMA_TOKEN`
+11. `Bash(ls .claude/hooks/hooks.sha256 .claude/hooks/guard-tools.py)` — the hook-integrity pin and the tool guard. Missing means the 2026-11 security fixes are not installed (see `SECURITY.md`)
+12. `Bash(ls -d node_modules/chrome-devtools-mcp)` — `.mcp.json` starts it with `npx --no-install`, so it must be installed locally
 
 Use `ls`, not `test`, for every existence check. A failing `test -d` prints nothing and its non-zero
 exit code is not shown in the tool result, so a missing dependency reads as a pass and the export
@@ -43,6 +45,8 @@ starters/ dir:       exists / missing
 artifacts/ dir:      will create
 .claude/skills/:     N skills found
 FIGMA_TOKEN env:     set / not set (only needed for /ingest-figma)
+hook pins:           present / missing (.claude/hooks/hooks.sha256 + guard-tools.py)
+chrome-devtools-mcp: installed / missing (node_modules, needed by .mcp.json)
 ```
 
 ## Phase 3 — Repair (user runs the commands)
@@ -50,14 +54,36 @@ FIGMA_TOKEN env:     set / not set (only needed for /ingest-figma)
 Do not install anything. Print the exact commands for the user to run in a separate shell:
 
 ```
-# Chrome DevTools MCP — already declared in .mcp.json (pinned, --isolated); approve it when Claude Code asks,
-# or register it manually with the same pinned, isolated form:
-claude mcp add chrome-devtools -s project -- npx chrome-devtools-mcp@1.9.0 --isolated
+# Installs the exact versions pinned in package.json / package-lock.json:
+# chrome-devtools-mcp (started by .mcp.json with npx --no-install), puppeteer, pptxgenjs
+npm ci
 brew install monolith
-npm install -D pptxgenjs@4.0.1 puppeteer@24.41.0
 ```
 
 Then ask them to restart Claude Code and re-run `/doctor`.
+
+If hook pins are missing, point them to `artifacts/security-fixes/APPLY.md` if it exists, otherwise to `SECURITY.md`. Never create or rewrite `hooks.sha256` yourself.
+
+### Credentials (print as guidance, never ask for the value)
+
+Only print this when the user has `gh` or `FIGMA_TOKEN` set up, or asks about it. Never ask the user to paste a token into the chat, and never read token files.
+
+```
+GitHub (gh): /ingest-github only clones, and ship-branch only pushes, opens and merges PRs on the fork.
+  Prefer a fine-grained personal access token scoped to the repositories you use, with
+  Contents: read/write and Pull requests: read/write, and an expiry (90 days or less):
+    gh auth login --with-token  < token-file      # run it yourself, outside Claude Code
+  A classic token with the `repo` scope can reach every repo you can; avoid it here.
+
+Figma (FIGMA_TOKEN): /ingest-figma only reads files.
+  Create a personal access token with the file content read-only scope and the shortest expiry
+  that works. Export it in your shell profile or a secrets manager, never in a project file:
+    export FIGMA_TOKEN=...                          # in your own shell, not in .env in this repo
+  The guard never sends it anywhere except https://api.figma.com/ and refuses to follow redirects
+  with it.
+
+Rotate either token if a session ever printed it, or if an ingested file asked you to share it.
+```
 
 The only repair this skill performs itself: `Bash(mkdir -p artifacts assets/thumbs test)`.
 

@@ -399,6 +399,166 @@ check block 'claude -p "do something"'
 check block 'claude mcp add x -- npx y'
 check block 'docker run -it x'
 
+# ============================================================ 2026-11 review X-01: reader commands that write or execute
+check block 'fd . artifacts -x cp artifacts/payload .claude/hooks/guard-bash.sh'
+check block 'fd -e sh -X cat'
+check block 'fd --exec cat'
+check block 'fd --exec-batch cat'
+check block 'fd -Hx cat'
+check block 'fd --exec=cat .'
+check block 'rg --pre cat pattern artifacts'
+check block 'rg --pre=cat pattern artifacts'
+check block 'sort -o .claude/hooks/guard-bash.sh artifacts/payload'
+check block 'sort -uo artifacts/out artifacts/in'
+check block 'sort --output=.claude/hooks/guard-bash.sh artifacts/payload'
+check block 'sort --compress-program=cat artifacts/in'
+check block 'uniq artifacts/payload .claude/hooks/guard-bash.sh'
+check block 'uniq -c artifacts/in artifacts/out'
+check block 'tree -o .claude/hooks/guard-bash.sh artifacts'
+check block 'tree -R -H . artifacts'
+check block 'git diff --output=.claude/hooks/guard-bash.sh'
+check block 'git log --output .claude/hooks/guard-bash.sh'
+check block 'git format-patch -o artifacts HEAD~1'
+check block 'git archive -o artifacts/x.zip HEAD'
+check block 'git bundle create artifacts/x.bundle HEAD'
+check block 'git grep -Ocat pattern'
+check block 'git grep --open-files-in-pager=cat pattern'
+check block 'find artifacts -fprint .claude/hooks/guard-bash.sh'
+check block 'find artifacts -fls artifacts/x'
+check block 'zip -TTcat artifacts/x.zip artifacts/a'
+check block 'file -C -m artifacts/magic'
+check block 'cp --target-directory=.claude/hooks artifacts/payload'
+check block 'cp -t .claude/hooks artifacts/payload'
+check block 'mv --target-directory=.claude/hooks artifacts/payload'
+check allow 'fd -e html . artifacts'
+check allow 'fd -t f -e jsx . artifacts'
+check allow 'rg -n deck-stage artifacts'
+check allow 'sort artifacts/list.txt'
+check allow 'sort -u -k 2 artifacts/list.txt'
+check allow 'uniq -c artifacts/list.txt'
+check allow 'uniq -f 2 artifacts/list.txt'
+check allow 'tree -L 2 artifacts'
+check allow 'git diff --stat'
+check allow 'git log --oneline -5'
+# code review of the fixes: redirect tokens, directory destinations, case, option prefixes / bundles
+check block 'cp artifacts/x .claude/hooks/guard-bash.sh 2>/dev/null'
+check block 'cp artifacts/x CLAUDE.md 2> /dev/null'
+check block 'cp artifacts/x CLAUDE.md < artifacts/y'
+check block 'cp artifacts/CLAUDE.md .'
+check block 'cp artifacts/settings.json .claude/'
+check block 'mv artifacts/package.json ./'
+check block 'cp artifacts/guard-bash.sh .claude/hooks'
+check block 'cp artifacts/export-pdf.mjs scripts'
+check block 'cp artifacts/x claude.md'
+check block 'cp artifacts/x Package.json'
+check block 'mkdir -p .Claude/skills/evil'
+check block 'cp artifacts/x .CLAUDE/Settings.json'
+check block 'cat </Users/gw/other/notes.txt'
+check block 'git grep -iOsh -e . -- artifacts/evil.sh'
+check block 'git grep --open=sh -e . -- artifacts/evil.sh'
+check block 'git diff --outp=.claude/hooks/guard-bash.sh'
+check block 'sort --outp=.claude/hooks/guard-bash.sh artifacts/payload'
+check block 'sort --compress-prog=cat artifacts/in'
+check block 'cp --target=.claude/hooks artifacts/payload'
+check allow 'cp artifacts/deck.html artifacts/versions/deck/x.html 2>/dev/null'
+check allow 'cp starters/deck_stage.js artifacts/ 2>/dev/null'
+check allow 'mkdir -p artifacts/Shots'
+check allow 'git log --oneline --no-color -5'
+# X-02: policy files and the audit trail are not writable from Bash (reading them is fine)
+check block 'cp artifacts/payload CLAUDE.md'
+check block 'cp artifacts/payload .claude/skills/publish/SKILL.md'
+check block 'mv artifacts/payload .claude/commands/done.md'
+check block 'cp artifacts/payload starters/deck_stage.js'
+check block 'cp artifacts/payload plugin/hooks/guard-bash.sh'
+check block 'cp artifacts/payload .github/workflows/security.yml'
+check block 'cp artifacts/payload tools/sync-plugin.mjs'
+check block 'cp artifacts/payload package.json'
+check block 'touch .claude/audit/tool-calls.jsonl'
+check block 'mkdir -p .claude/skills/evil'
+check block 'mv starters/deck_stage.js artifacts/'
+check allow 'cp starters/deck_stage.js artifacts/'
+check allow 'cat CLAUDE.md'
+check allow 'rg -n allowed-tools .claude/skills'
+check allow 'git add CLAUDE.md .claude/skills/publish/SKILL.md'
+# X-07 / S-05: curl must not follow redirects while sending a header
+check block 'curl -L https://api.figma.com/v1/files/AbC123 -sS -H "X-FIGMA-TOKEN: $FIGMA_TOKEN" -o artifacts/ingested/f.json'
+check block 'curl https://api.figma.com/v1/files/AbC123 -sSL -H "X-FIGMA-TOKEN: $FIGMA_TOKEN" -o artifacts/ingested/f.json'
+check block 'curl --location https://api.figma.com/v1/files/AbC123 -H "X-FIGMA-TOKEN: $FIGMA_TOKEN"'
+check allow 'curl -sSL http://127.0.0.1:4567/'
+# S-01: gh pr / issue only against the fork, no comment / close / edit / fork / --admin / --auto
+check allow 'gh pr create --repo crywolfe/claude-code-design --base claude-design-features --head fix-typo --title "Fix CLAUDE.md typo" --body "Updates CLAUDE.md"'
+check allow 'gh pr create -R crywolfe/claude-code-design --title t --body b'
+check allow 'gh pr view 5 --repo crywolfe/claude-code-design --json state,mergedAt,mergeCommit'
+check allow 'gh pr checks 5 --repo crywolfe/claude-code-design'
+check allow 'gh pr merge 5 --repo crywolfe/claude-code-design --merge'
+check block 'gh pr merge 5 --repo crywolfe/claude-code-design --merge --admin'
+check block 'gh pr merge 5 --repo crywolfe/claude-code-design --auto --merge'
+check block 'gh pr view 5'
+check block 'gh pr create --repo someone/else --title t --body b'
+check block 'gh pr view 5 --repo crywolfe/claude-code-design --repo someone/else'
+check block 'gh pr comment 5 --repo crywolfe/claude-code-design --body x'
+check block 'gh pr close 5 --repo crywolfe/claude-code-design'
+check block 'gh pr edit 5 --repo crywolfe/claude-code-design --title x'
+check block 'gh issue close 3 --repo crywolfe/claude-code-design'
+check block 'gh repo fork acme/web'
+check block 'gh pr merge 5 --repo crywolfe/claude-code-design -Rbluzir/claude-code-design --merge'
+check block 'gh pr merge 5 --repo crywolfe/claude-code-design -dR bluzir/claude-code-design --merge'
+check block 'gh pr view 5 -Rcrywolfe/claude-code-design'
+check allow 'gh pr view 5 -R crywolfe/claude-code-design'
+check allow 'gh pr view 5 --repo=crywolfe/claude-code-design'
+# X-08: validation / publish scripts
+check allow 'node scripts/validate-pending.mjs edits artifacts/edits/s1/pending.yaml --html artifacts/deck.html'
+check allow 'node scripts/validate-pending.mjs tweaks artifacts/tweaks/s1/pending.yaml --html artifacts/deck.html'
+check allow 'node scripts/prepare-publish.mjs artifacts/deck.html --allow-findings'
+check allow 'node scripts/prepare-publish.mjs artifacts/deck.html --strip-only --out handoff/deck/index.html'
+check block 'node scripts/prepare-publish.mjs artifacts/deck.html --out=.claude/hooks/guard-bash.sh'
+check block 'node scripts/prepare-publish.mjs artifacts/deck.html --out .claude/hooks/guard-bash.sh'
+
+# ============================================================ tool guard (X-03 / X-04 / X-06): MCP allowlist, web tools, hook pins
+# Runs against a copy pinned to the hooks as they are on disk now, so this self-test passes after a hook
+# edit *before* the real .claude/hooks/hooks.sha256 is re-pinned (the documented order: test, then pin).
+# The copy lives under artifacts/ (gitignored, and writable inside the Bash sandbox, where the system
+# temp directory may not be). If it cannot be created, the section fails loudly instead of running
+# against an empty path.
+tparent="$(cd "$here/../.." && pwd)/artifacts"
+mkdir -p "$tparent" 2>/dev/null || true
+tdir="$(mktemp -d "$tparent/.guard-test.XXXXXX" 2>/dev/null)" || tdir=""
+if [[ -z "$tdir" || ! -d "$tdir" ]] || ! cp "$here/guard-tools.py" "$here/guard-bash.sh" "$here/guard-browser.py" "$tdir/" \
+   || ! (cd "$tdir" && shasum -a 256 guard-bash.sh guard-browser.py > hooks.sha256); then
+  printf 'FAIL setup  could not create a pinned copy of guard-tools.py under %s\n' "$tparent"; fail=1; fails+=("tool-guard setup")
+  tdir=""
+fi
+THOOK="$tdir/guard-tools.py"
+tcheck() {
+  local expect="$1" tool="$2" out rc
+  if [[ -z "$tdir" || ! -f "$THOOK" ]]; then printf 'SKIP %-5s  %s (no pinned copy)\n' "$expect" "$tool"; return 0; fi
+  n=$((n + 1))
+  out="$(printf '{"tool_name":"%s","tool_input":{}}' "$tool" | python3 "$THOOK" 2>&1)"; rc=$?
+  if [[ "$expect" == allow && $rc -eq 0 ]] || [[ "$expect" == block && $rc -eq 2 ]]; then
+    printf 'PASS %-5s  %s\n' "$expect" "$tool"
+  else
+    printf 'FAIL %-5s rc=%s  %s   [%s]\n' "$expect" "$rc" "$tool" "$out"; fail=1; fails+=("$expect  $tool")
+  fi
+}
+for tool in Read Edit Write Glob Bash Skill Agent AskUserQuestion Artifact ArtifactComments DesignSync ToolSearch \
+  mcp__chrome-devtools__navigate_page mcp__plugin_claude-code-design_chrome-devtools__take_screenshot \
+  mcp__plugin_chrome-devtools-mcp_chrome-devtools__click mcp__ide__getDiagnostics; do
+  tcheck allow "$tool"
+done
+for tool in WebFetch WebSearch mcp__claude_ai_Mail__send_message mcp__plugin_shell_shell__execute_shell_command \
+  mcp__plugin_browser_browser__browser_exec mcp__evilchrome-devtools__run mcp__plugin_evil_chrome-devtools-x__run \
+  mcp__chrome-devtools-evil__navigate_page; do
+  tcheck block "$tool"
+done
+# a hook that no longer matches its pin blocks every tool, and so does a missing pin file
+if [[ -n "$tdir" && -d "$tdir" ]]; then
+  printf '# tampered\n' >> "$tdir/guard-bash.sh"
+  tcheck block Read
+  rm -f "$tdir/hooks.sha256"
+  tcheck block Read
+  rm -rf "$tdir"
+fi
+
 # ============================================================ browser guard
 bcheck allow mcp__chrome-devtools__navigate_page '{"pageId":1,"type":"url","url":"file:///Users/gw/proj/artifacts/deck.html?v=1"}'
 bcheck allow mcp__chrome-devtools__navigate_page '{"pageId":1,"type":"url","url":"file:///Users/gw/proj/artifacts/deck%20v2.html?v=1"}'
@@ -442,6 +602,27 @@ bcheck block mcp__chrome-devtools__evaluate_script '{"pageId":1,"function":"() =
 bcheck block mcp__chrome-devtools__evaluate_script '{"pageId":1,"function":"() => new Function(\"return 1\")()"}'
 bcheck block mcp__chrome-devtools__evaluate_script '{"pageId":1,"function":"() => document.title","filePath":"/Users/gw/.zshrc"}'
 bcheck block mcp__chrome-devtools__evaluate_script '{"pageId":1,"function":"() => document.title","filePath":"artifacts/out.json"}'
+# 2026-11 review X-03: every chrome-devtools tool that writes a file, and upload_file
+bcheck allow mcp__chrome-devtools__take_screenshot '{"filePath":".claude/last-preview.png"}'
+bcheck allow mcp__chrome-devtools__take_snapshot '{"filePath":".claude/last-snapshot.txt"}'
+bcheck allow mcp__chrome-devtools__take_screenshot '{"filePath":".claude/verify-20261123T120000Z.png","fullPage":true}'
+bcheck allow mcp__chrome-devtools__take_screenshot '{"filePath":"artifacts/shots/deck-1.png"}'
+bcheck allow mcp__chrome-devtools__take_screenshot '{}'
+bcheck allow mcp__chrome-devtools__click '{"uid":"1_2"}'
+bcheck block mcp__chrome-devtools__take_screenshot '{"filePath":".claude/hooks/guard-bash.sh"}'
+bcheck block mcp__chrome-devtools__take_screenshot '{"filePath":".claude/settings.json"}'
+bcheck block mcp__chrome-devtools__take_snapshot '{"filePath":"CLAUDE.md"}'
+bcheck block mcp__chrome-devtools__take_snapshot '{"filePath":"/Users/gw/.zshrc"}'
+bcheck block mcp__chrome-devtools__take_heapsnapshot '{"filePath":"/tmp/x.heapsnapshot"}'
+bcheck block mcp__chrome-devtools__performance_stop_trace '{"filePath":"scripts/export-pdf.mjs"}'
+bcheck block mcp__chrome-devtools__take_screenshot '{"filePath":"artifacts/../.claude/hooks/guard-bash.sh"}'
+bcheck block mcp__chrome-devtools__upload_file '{"uid":"1_2","filePath":"artifacts/deck.html"}'
+bcheck block mcp__plugin_chrome-devtools-mcp_chrome-devtools__upload_file '{"uid":"1_2","filePath":"/Users/gw/.ssh/id_rsa"}'
+bcheck block mcp__chrome-devtools__take_screenshot '{"filePath":".claude/x%2F..%2F..%2Fartifacts%2Fy/../settings.json"}'
+bcheck block mcp__chrome-devtools__lighthouse_audit '{"outputDirPath":".claude/skills/x"}'
+bcheck block mcp__chrome-devtools__lighthouse_audit '{"outputDirPath":"/Users/gw/Library/LaunchAgents"}'
+bcheck allow mcp__chrome-devtools__lighthouse_audit '{"outputDirPath":"artifacts/lighthouse"}'
+bcheck allow mcp__chrome-devtools__lighthouse_audit '{"mode":"navigation"}'
 
 printf '\n%s cases, %s failed\n' "$n" "${#fails[@]}"
 for f in "${fails[@]}"; do printf '  FAIL %s\n' "$f"; done

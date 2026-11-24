@@ -1,0 +1,67 @@
+name: security
+
+on:
+  push:
+    branches: [claude-design-features]
+    tags: ['v*']
+  pull_request:
+    branches: [claude-design-features]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      # NOTE: pinned to major tags because commit SHAs could not be verified when this file was
+      # written. Replace each with the full commit SHA of the release (keep the tag as a comment).
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Root guard self-test
+        run: bash .claude/hooks/test-guard.sh
+
+      - name: Plugin guard self-test
+        run: bash plugin/hooks/test-guard.sh
+
+      - name: Plugin is generated from sources
+        run: node tools/sync-plugin.mjs --check
+
+      - name: Syntax-check scripts
+        run: |
+          set -e
+          for f in scripts/*.mjs plugin/scripts/*.mjs tools/*.mjs; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Install dependencies (lockfile only, no lifecycle scripts)
+        run: npm ci --ignore-scripts
+
+      # Non-blocking for now: advisories in transitive dev dependencies should be triaged, not
+      # silently break every PR. Remove continue-on-error once the baseline is clean.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  sbom:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate CycloneDX SBOM
+        run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json

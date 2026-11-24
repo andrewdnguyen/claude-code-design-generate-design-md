@@ -27,7 +27,18 @@ trap 'echo "blocked by guard-bash: internal error while inspecting command" >&2;
 input="$(cat)"
 cmd="$(printf '%s' "$input" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))')"
 
-deny() { echo "blocked by guard-bash: $1" >&2; exit 2; }
+# Best-effort audit trail: one JSON line per decision in .claude/audit/bash-guard.jsonl. It never
+# changes the decision, logs a SHA-256 of the command rather than the command, and logs the rule
+# text only up to its first quote (the quoted part can echo user content).
+audit_dir=""
+if [[ -n "${CLAUDE_PROJECT_DIR:-}" && "${CLAUDE_PROJECT_DIR}" == /* && -d "${CLAUDE_PROJECT_DIR}/.claude" ]]; then audit_dir="${CLAUDE_PROJECT_DIR}/.claude/audit"; fi
+audit() {
+  [[ -n "$audit_dir" ]] || return 0
+  local rule="$2"; rule="${rule%%"'"*}"
+  { mkdir -p "$audit_dir" && python3 -c 'import hashlib,json,sys,time; print(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tool": "Bash", "decision": sys.argv[1], "rule": sys.argv[2].strip(), "input_sha256": hashlib.sha256(sys.argv[3].encode()).hexdigest()}))' "$1" "$rule" "${cmd:-}" >> "$audit_dir/bash-guard.jsonl"; } 2>/dev/null || true
+}
+
+deny() { audit deny "$1"; echo "blocked by guard-bash: $1" >&2; exit 2; }
 
 if (( ${#cmd} > 20000 )); then deny "command longer than 20000 characters"; fi
 
@@ -132,8 +143,12 @@ path_ok() {
     p="$t"
     t="${t//\/\//$sl}"; t="${t//\/.\//$sl}"; t="${t#./}"; t="${t#/}"
   done
+  # the macOS filesystem is case-insensitive: Claude.md and .Claude/Hooks are the same files
+  t="$(printf '%s' "$t" | tr '[:upper:]' '[:lower:]')"
   case "$t" in
     .claude/hooks*|.claude/settings*|.mcp.json*|.git/*|.git) return 1 ;;
+    # policy-as-code and the audit trail: change these with the Edit tool (which asks) or by hand
+    claude.md|.claude/skills*|.claude/commands*|.claude/audit*|starters|starters/*|plugin|plugin/*|.github|.github/*|tools|tools/*|package.json|package-lock.json) return 1 ;;
     scripts/*) [[ "$2" == node ]] || return 1 ;;   # node may run them; nothing may write them
   esac
   return 0
@@ -160,8 +175,51 @@ while IFS= read -r seg || [[ -n "$seg" ]]; do
   # ---- wrappers that run another command (none are on the allowlist; kept as a second layer)
   re_wrap='^(xargs|time|nohup|nice|ionice|command|builtin|sudo|doas|su|env|timeout|watch|caffeinate|script|expect|exec|eval|source|chroot|strace|dtruss|ltrace)$'
   if [[ "$first" =~ $re_wrap ]]; then deny "command wrapper: $first"; fi
-  re_find_exec='(^|[[:space:]])-(exec|execdir|ok|okdir|delete)([[:space:]]|$)'
-  if [[ "$bare" =~ $re_find_exec ]]; then deny "find -exec / -delete"; fi
+  re_find_exec='(^|[[:space:]])-(exec|execdir|ok|okdir|delete|fprint|fprint0|fprintf|fls)([[:space:]]|$)'
+  if [[ "$bare" =~ $re_find_exec ]]; then deny "find -exec / -delete / -fprint / -fls"; fi
+
+  # ---- reader commands with options that write a file or run another program. The path check
+  # below skips option tokens, so these forms must be refused by name. getopt_long and git accept
+  # unique prefixes of long options (--outp=, --open=) and bundled short options (-iO), so the
+  # patterns match prefixes and short-option clusters, not only the canonical spelling.
+  case "$first" in
+    fd)
+      re_fd_exec='(^|[[:space:]])(-[A-Za-z0-9]*[xX][A-Za-z0-9]*|--exec|--exec-batch)([[:space:]=]|$)'
+      if [[ "$bare" =~ $re_fd_exec ]]; then deny "fd -x / -X / --exec / --exec-batch (runs a command per result)"; fi ;;
+    rg)
+      re_rg_pre='(^|[[:space:]])--pre([[:space:]=]|$)'
+      if [[ "$bare" =~ $re_rg_pre ]]; then deny "rg --pre (runs a program per file)"; fi ;;
+    sort)
+      re_sort_out='(^|[[:space:]])(-[A-Za-z]*o|--o[a-z-]*|--co[a-z-]*)'
+      if [[ "$bare" =~ $re_sort_out ]]; then deny "sort -o / --output / --compress-program"; fi ;;
+    uniq)
+      read -r -a utoks <<< "$bare"; npos=0; skip=0
+      for ut in "${utoks[@]:1}"; do
+        if (( skip )); then skip=0; continue; fi
+        case "$ut" in
+          -f|-s|-w) skip=1 ;;
+          -*) ;;
+          *) npos=$((npos + 1)) ;;
+        esac
+      done
+      if (( npos > 1 )); then deny "uniq with an output file (second file argument)"; fi ;;
+    tree)
+      re_tree_out='(^|[[:space:]])(-[A-Za-z]*[oR]|--o[a-z-]*)'
+      if [[ "$bare" =~ $re_tree_out ]]; then deny "tree -o / -R (write files)"; fi ;;
+    git)
+      re_git_out='(^|[[:space:]])(--ou[a-z-]*|--op[a-z-]*|-[A-Za-z0-9]*O)'
+      re_git_writecmd='^[[:space:]]*git[[:space:]]+(format-patch|bundle|archive|fast-export|fast-import)([[:space:]]|$)'
+      if [[ "$bare" =~ $re_git_out ]] || [[ "$bare" =~ $re_git_writecmd ]]; then deny "git --output / -O / format-patch / bundle / archive (write files or run a pager command)"; fi ;;
+    zip)
+      re_zip_tt='(^|[[:space:]])(-TT[^[:space:]]*|--un[a-z-]*)'
+      if [[ "$bare" =~ $re_zip_tt ]]; then deny "zip -TT / --unzip-command (runs a program)"; fi ;;
+    file)
+      re_file_c='(^|[[:space:]])-[A-Za-z]*C'
+      if [[ "$bare" =~ $re_file_c ]]; then deny "file -C (writes a compiled magic file)"; fi ;;
+    cp|mv)
+      re_cp_t='(^|[[:space:]])(-[A-Za-z]*t|--t[a-z-]*)'
+      if [[ "$bare" =~ $re_cp_t ]]; then deny "cp / mv -t / --target-directory (give the destination as the last argument)"; fi ;;
+  esac
 
   # ---- `which <name>` is a pure existence check; exempt it before the interpreter rules
   re_which='^[[:space:]]*which[[:space:]]+(-a[[:space:]]+)?[A-Za-z0-9_.-]+([[:space:]]+2>/dev/null)?[[:space:]]*$'
@@ -170,8 +228,8 @@ while IFS= read -r seg || [[ -n "$seg" ]]; do
   # ---- interpreters: node and python3 only for the documented invocations
   re_node="${W}(node|nodejs)([[:space:]]|$)"
   if [[ "$bare" =~ $re_node ]]; then
-    re_node_ok='^[[:space:]]*node[[:space:]]+(scripts/(export-pdf|export-pptx|make-assets-index)\.mjs([[:space:]]|$)|--check[[:space:]]+[^[:space:]-][^[:space:]]*[[:space:]]*$|(--version|-v)[[:space:]]*$)'
-    if ! [[ "$bare" =~ $re_node_ok ]]; then deny "node: only scripts/export-pdf.mjs, scripts/export-pptx.mjs, scripts/make-assets-index.mjs, --check <file>, --version"; fi
+    re_node_ok='^[[:space:]]*node[[:space:]]+(scripts/(export-pdf|export-pptx|make-assets-index|validate-pending|prepare-publish)\.mjs([[:space:]]|$)|--check[[:space:]]+[^[:space:]-][^[:space:]]*[[:space:]]*$|(--version|-v)[[:space:]]*$)'
+    if ! [[ "$bare" =~ $re_node_ok ]]; then deny "node: only scripts/export-pdf.mjs, scripts/export-pptx.mjs, scripts/make-assets-index.mjs, scripts/validate-pending.mjs, scripts/prepare-publish.mjs, --check <file>, --version"; fi
   fi
   re_py="${W}python[0-9.]*([[:space:]]|$)"
   if [[ "$bare" =~ $re_py ]]; then
@@ -239,7 +297,7 @@ while IFS= read -r seg || [[ -n "$seg" ]]; do
     while [[ "$c" =~ $re_local ]]; do c="${c/"${BASH_REMATCH[0]}"/ ALLOWED_URL }"; done
     re_q='"[^"]*"|'"'"'[^'"'"']*'"'"
     while [[ "$c" =~ $re_q ]]; do c="${c/"${BASH_REMATCH[0]}"/ QSTR }"; done
-    urls=0; outs=0; expect=""
+    urls=0; outs=0; expect=""; hdr=0; loc=0
     read -r -a toks <<< "$c"
     for t in "${toks[@]:1}"; do
       if [[ -n "$expect" ]]; then
@@ -251,14 +309,16 @@ while IFS= read -r seg || [[ -n "$seg" ]]; do
       fi
       case "$t" in
         ALLOWED_URL) urls=$((urls + 1)) ;;
-        -H) expect=H ;;
+        -H) expect=H; hdr=1 ;;
         -o) expect=o; outs=$((outs + 1)) ;;
-        -s|-S|-sS|-Ss|-I|-sI|-L|-f|-sSf|-sSL|-sSfL|-sL|-sf|--silent|--show-error|--head|--fail|--location) ;;
+        -L|-sSL|-sSfL|-sL|--location) loc=1 ;;
+        -s|-S|-sS|-Ss|-I|-sI|-f|-sSf|-sf|--silent|--show-error|--head|--fail) ;;
         *) deny "curl: argument '$t' is not allowed (allowed: one https://api.figma.com/ or http://127.0.0.1:<port>/ URL, -s -S -I -L -f, -H <quoted>, -o artifacts/ingested/<file>)" ;;
       esac
     done
     if (( urls != 1 )); then deny "curl: exactly one allowlisted URL required"; fi
     if (( outs > 1 )); then deny "curl: more than one -o"; fi
+    if (( hdr && loc )); then deny "curl: -L together with -H (a redirect re-sends the header, such as the Figma token, to the new host)"; fi
   fi
 
   # ---- open / xdg-open: only .html inside the project, or the local server
@@ -271,8 +331,22 @@ while IFS= read -r seg || [[ -n "$seg" ]]; do
   # ---- gh / git
   re_gh="${W}gh([[:space:]]|$)"
   if [[ "$bare" =~ $re_gh ]]; then
-    re_gh_ok='^[[:space:]]*gh[[:space:]]+(repo[[:space:]]+(clone|fork)[[:space:]]|auth[[:space:]]+status([[:space:]]|$)|(--version|-v)[[:space:]]*$|pr[[:space:]]|issue[[:space:]])'
-    if ! [[ "$bare" =~ $re_gh_ok ]]; then deny "gh: only repo clone, repo fork, auth status, pr, issue, --version"; fi
+    # No comment, close, edit or review, and no --admin / --auto: those change shared state or carry
+    # free text to a public repo. pr / issue commands must name this repo's fork explicitly.
+    re_gh_ok='^[[:space:]]*gh[[:space:]]+(repo[[:space:]]+clone[[:space:]]|auth[[:space:]]+status([[:space:]]|$)|(--version|-v)[[:space:]]*$|pr[[:space:]]+(create|view|list|checks|diff|status|merge)([[:space:]]|$)|issue[[:space:]]+(view|list|create)([[:space:]]|$))'
+    if ! [[ "$bare" =~ $re_gh_ok ]]; then deny "gh: only repo clone, auth status, pr create|view|list|checks|diff|status|merge, issue view|list|create, --version"; fi
+    re_gh_admin='(^|[[:space:]])(--admin|--auto)([[:space:]=]|$)'
+    if [[ "$bare" =~ $re_gh_admin ]]; then deny "gh --admin / --auto"; fi
+    re_gh_prissue='^[[:space:]]*gh[[:space:]]+(pr|issue)[[:space:]]'
+    if [[ "$bare" =~ $re_gh_prissue ]]; then
+      # exactly the fork, as '--repo X' / '--repo=X' / '-R X'; after removing those, any other
+      # repo flag (attached '-Rowner/repo', bundled '-dR', a second --repo) is refused
+      re_gh_fork='(^|[[:space:]])(--repo|-R)([[:space:]]+|=)crywolfe/claude-code-design([[:space:]]|$)'
+      re_gh_anyrepo='(^|[[:space:]])(--repo|-[A-Za-z]*R)'
+      g="$bare"; nfork=0
+      while [[ "$g" =~ $re_gh_fork ]]; do g="${g/"${BASH_REMATCH[0]}"/ }"; nfork=$((nfork + 1)); done
+      if (( nfork == 0 )) || [[ "$g" =~ $re_gh_anyrepo ]]; then deny "gh pr / issue: pass --repo crywolfe/claude-code-design (and no other repo)"; fi
+    fi
   fi
   re_git="${W}git([[:space:]]|$)"
   if [[ "$bare" =~ $re_git ]]; then
@@ -306,16 +380,59 @@ while IFS= read -r seg || [[ -n "$seg" ]]; do
   # that appears as an argument ("rg git file") does not change the mode.
   mode=""
   case "$first" in
-    cp|mv|mkdir|touch|zip|monolith|node|gh) mode="$first" ;;
+    cp|mv|mkdir|touch|zip|monolith|node) mode="$first" ;;
+    # gh only writes local files when cloning; PR / issue text may name protected files freely
+    gh) re_gh_clone='^[[:space:]]*gh[[:space:]]+repo[[:space:]]+clone[[:space:]]'
+        if [[ "$bare" =~ $re_gh_clone ]]; then mode=gh; else mode=READ; fi ;;
     git|cat|head|tail|ls|rg|grep|fd|find|sort|uniq|cut|tr|wc|stat|diff|cmp|du|tree|shasum|md5|md5sum) mode=READ ;;
   esac
   if [[ -n "$mode" ]]; then
     read -r -a toks <<< "$seg"
-    for t in "${toks[@]:1}"; do
-      [[ "$t" == -* ]] && continue
-      if ! path_ok "$t" "$mode"; then deny "path argument '$t' is outside the project (or a protected file)"; fi
+    nonopt=(); skipnext=0
+    re_redir_tok="^[0-9]?[&${BEL}]?>>?(/dev/null|[&${BEL}][0-9]+)?$"
+    re_redir_bare="^[0-9]?[&${BEL}]?>>?$"
+    for ((ti = 1; ti < ${#toks[@]}; ti++)); do
+      t="${toks[$ti]}"
+      if (( skipnext )); then skipnext=0; continue; fi
+      # Output redirects are not arguments (the redirect rule above already limited them to
+      # /dev/null and descriptors). They must not count as cp's last argument, or the real
+      # destination would be checked as a source.
+      if [[ "$t" =~ $re_redir_tok ]]; then
+        if [[ "$t" =~ $re_redir_bare ]]; then skipnext=1; fi
+        continue
+      fi
+      # Input redirects: a writer has no reason to read stdin from a file; a reader's '<file' is a read path
+      if [[ "$t" == *'<'* ]]; then
+        if [[ "$mode" != READ ]]; then deny "input redirect '<' in a command that writes files"; fi
+        if ! path_ok "${t##*<}" READ; then deny "path argument '${t##*<}' is outside the project"; fi
+        continue
+      fi
+      if [[ "$t" == -* ]]; then
+        # an option's attached value (--out=path) is still a path for a writer
+        if [[ "$mode" != READ && "$t" == --*=* ]]; then
+          if ! path_ok "${t#*=}" "$mode"; then deny "option value '${t#*=}' is outside the project (or a protected file)"; fi
+        fi
+        continue
+      fi
+      nonopt+=("$t")
+    done
+    last=$(( ${#nonopt[@]} - 1 ))
+    for ((ti = 0; ti < ${#nonopt[@]}; ti++)); do
+      t="${nonopt[$ti]}"; m="$mode"
+      if [[ "$mode" == cp || "$mode" == mv ]] && (( ti < last )); then
+        # a source. cp may read from starters/ (write-protected); every other source is still
+        # checked as a writer path, and mv removes its source, so it is always one.
+        if [[ "$mode" == cp ]]; then
+          case "${t//[\"\']/}" in starters/*|./starters/*) m=READ ;; esac
+        fi
+        # a directory destination (".", ".claude/", "scripts") receives <dest>/<basename of source>
+        d="${nonopt[$last]//[\"\']/}"; d="${d%/}"; s="${t//[\"\']/}"; s="${s%/}"
+        if ! path_ok "${d:-.}/${s##*/}" "$mode"; then deny "copying '$t' into '${nonopt[$last]}' would write a protected file"; fi
+      fi
+      if ! path_ok "$t" "$m"; then deny "path argument '$t' is outside the project (or a protected file)"; fi
     done
   fi
 done <<< "$segs"
 
+audit allow ""
 exit 0
