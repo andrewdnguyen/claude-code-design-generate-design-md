@@ -109,17 +109,6 @@
       "Edit(.mcp.json)",
       "Edit(scripts/**)",
       "Edit(.git/**)"
-    ],
-    "ask": [
-      "Edit(CLAUDE.md)",
-      "Edit(.claude/skills/**)",
-      "Edit(.claude/commands/**)",
-      "Edit(starters/**)",
-      "Edit(plugin/**)",
-      "Edit(tools/**)",
-      "Edit(.github/**)",
-      "Edit(package.json)",
-      "Edit(package-lock.json)"
     ]
   },
   "sandbox": {

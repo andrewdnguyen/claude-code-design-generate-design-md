@@ -252,7 +252,7 @@ Status from the merged code (PR #8, merge commit `6b532ab`) and the follow-up br
 | ID | Priority | Status | Where |
 |---|---|---|---|
 | X-01 | High | Fixed | guard-bash reader-command rules and tests; Bash sandbox in `settings.json` |
-| X-02 | High | Fixed | ask / deny rules and sandbox `denyWrite` on policy paths; guard policy-path list |
+| X-02 | High | Partly fixed | Deny rules and sandbox `denyWrite` keep hooks, settings, `.mcp.json` and `scripts/` out of the agent's reach, and the guard refuses shell writes to every policy path. The per-edit `ask` prompts on `CLAUDE.md`, skills, commands, `starters/`, `plugin/`, `tools/`, `.github/` and the package files were removed at the maintainer's request (2026-11-24), so the file tools can edit those without a prompt; the remaining gate is PR + CI + the user's "Merge" |
 | X-03 | High | Fixed | `guard-tools.py` MCP allowlist and web-tool deny; `guard-browser.py` checks every path input, refuses `upload_file` |
 | X-04 | High | Fixed | `onFailure: block` on every hook; hook hashes pinned in `.claude/hooks/hooks.sha256` |
 | X-05 | Medium | Partly fixed | Read denies added for credential and history files; the `Write(...)` rules are kept until confirmed dead |
