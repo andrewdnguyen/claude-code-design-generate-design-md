@@ -116,7 +116,8 @@ sandbox, report it; don't ask to disable it.
 The committed `settings.json` is the policy for every checkout, including forks. A maintainer may widen it on their
 own machine only, in the gitignored `.claude/settings.local.json`, by adding `sandbox.excludedCommands` entries for
 the exact git and `gh` forms the guard already allows (`git checkout -b`, `git add`, `git commit`,
-`git push origin`, `gh pr …`, `gh issue …`, `gh auth status`), plus matching `permissions.allow` rules so they
+`git push origin`, `git checkout claude-design-features`, `git pull --ff-only origin claude-design-features`,
+`git branch -d`, `gh pr …`, `gh issue …`, `gh auth status`), plus matching `permissions.allow` rules so they
 don't prompt. Those commands then run outside the sandbox, but the guard and the deny rules still apply. A local file can only add: it cannot lift a `deny` in
 `settings.json`. Claude never writes that file; without it, `ship-branch` hands git and `gh` steps to the user.
 
@@ -134,7 +135,7 @@ segment and allows only the documented forms of each command:
 - reader commands may not write or execute: no `fd -x/-X/--exec`, `rg --pre`, `sort -o`, `uniq <in> <out>`, `tree -o/-R`, `git --output/-O/format-patch/bundle/archive`, `find -fprint/-fls`, `zip -TT`, `file -C`, `cp/mv -t`
 - `open`: one `file://<project>/…/*.html` or `http://127.0.0.1:<port>/…` URL; `rm`: only `/tmp/cd-ingest-*` as the whole command
 - `zip`: archive and inputs under `handoff/` or `artifacts/`; `unzip`: only `-p` / `-l`
-- `gh`: `repo clone`, `auth status`, `pr create|view|list|checks|diff|status|merge`, `issue view|list|create`, always with `--repo crywolfe/claude-code-design`; never `--admin` / `--auto`. The merge itself still needs the user's explicit "Merge" in `ship-branch`. `git`: no remote URLs, config writes, clone, submodules, `--exec`
+- `gh`: `repo clone`, `auth status`, `pr create|view|list|checks|diff|status|merge`, `issue view|list|create`, always with `--repo crywolfe/claude-code-design`; never `--admin` / `--auto`. The merge itself still needs the user's explicit "Merge" in `ship-branch`. `git`: no remote URLs, config writes, clone, submodules, `--exec`; nothing that rewrites the working tree except `git checkout -b <name>` / `git switch -c <name>`, `git checkout claude-design-features` and `git pull --ff-only origin claude-design-features`
 - no credential / dotfile paths (`~/.ssh`, `~/.aws`, `~/.claude`, `.env`, `credentials`, `*.pem`, …)
 
 The guard reads the unparsed command string, so quoted prose containing a command name, a backtick or `..`

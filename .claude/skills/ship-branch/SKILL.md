@@ -38,12 +38,10 @@ A maintainer can let these exact commands run outside the sandbox on their own m
 10. Confirm with `gh pr view <n> --repo crywolfe/claude-code-design --json state,mergedAt,mergeCommit`.
 11. `git push origin --delete <branch>`
 
-## What the user has to run
-
-The guard blocks `git checkout <existing>` and `git pull`. Tell the user to run:
-
-```
-! git checkout claude-design-features
-! git pull
-! git branch -d <branch>
-```
+12. Bring the local checkout up to date, so the next branch starts from the merged state:
+    ```
+    git checkout claude-design-features
+    git pull --ff-only origin claude-design-features
+    git branch -d <branch>
+    ```
+    These exact forms are the only branch switch and pull the guard allows. If the checkout or pull refuses because of local changes, or `--ff-only` refuses because the branches diverged, stop and show the user; don't stash, reset or force. If `git branch -d` says the branch is not fully merged, stop and report it; never use `-D`. In a checkout without the maintainer settings, the sandbox refuses all three (`Operation not permitted`); give the user the same commands as `! <command>`.
