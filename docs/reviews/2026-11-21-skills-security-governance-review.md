@@ -252,7 +252,7 @@ Status from the merged code (PR #8, merge commit `6b532ab`) and the follow-up br
 | ID | Priority | Status | Where |
 |---|---|---|---|
 | X-01 | High | Fixed | guard-bash reader-command rules and tests; Bash sandbox in `settings.json` |
-| X-02 | High | Partly fixed | Deny rules and sandbox `denyWrite` keep hooks, settings, `.mcp.json` and `scripts/` out of the agent's reach, and the guard refuses shell writes to every policy path. The per-edit `ask` prompts on `CLAUDE.md`, skills, commands, `starters/`, `plugin/`, `tools/`, `.github/` and the package files were removed at the maintainer's request (2026-11-24), so the file tools can edit those without a prompt; the remaining gate is PR + CI + the user's "Merge" |
+| X-02 | High | Partly fixed | Deny rules and sandbox `denyWrite` keep hooks, settings, `.mcp.json` and `scripts/` out of the agent's reach, and the guard refuses shell writes to every policy path. The per-edit `ask` prompts on `CLAUDE.md`, skills, commands, `starters/`, `plugin/`, `tools/`, `.github/` and the package files were removed at the maintainer's request (2026-11-24), so the file tools can edit those without a prompt; the remaining gate is PR + CI (the per-PR "Merge" was also removed, see S-01) |
 | X-03 | High | Fixed | `guard-tools.py` MCP allowlist and web-tool deny; `guard-browser.py` checks every path input, refuses `upload_file` |
 | X-04 | High | Fixed | `onFailure: block` on every hook; hook hashes pinned in `.claude/hooks/hooks.sha256` |
 | X-05 | Medium | Partly fixed | Read denies added for credential and history files; the `Write(...)` rules are kept until confirmed dead |
@@ -265,7 +265,7 @@ Status from the merged code (PR #8, merge commit `6b532ab`) and the follow-up br
 | X-12 | Low–Med | Open | |
 | X-13 | Low–Med | Partly fixed | `SECURITY.md`, `plugin/SECURITY.md`, this table |
 | X-14 | Medium | Fixed | `evaluate_script` pre-approvals removed; `disallowed-tools` on ingest skills and generate-design-md |
-| S-01 | High | Partly fixed | ship-branch: self-test, green CI, explicit "Merge"; guard limits `gh` to the fork. Needs branch protection |
+| S-01 | High | Partly fixed | ship-branch: self-test, green CI; guard limits `gh` to the fork and refuses `--admin` / `--auto`. The per-PR "Merge" question was removed at the maintainer's request (2026-11-24) and is kept only for changes prompted by untrusted content. Agent-written changes to skills and `CLAUDE.md` can now reach the default branch with no human review; needs branch protection |
 | S-02 | High | Fixed | publish uses `ArtifactComments`, runs the scan script, records SHA-256 |
 | S-03 | Medium | Fixed (follow-up) | Classification question before push; append-only `sync-log/` with file hashes |
 | S-04 | Medium | Fixed (follow-up) | Commit SHA and per-file SHA-256 recorded; read-only token guidance. Injection eval still missing |
@@ -282,4 +282,4 @@ Status from the merged code (PR #8, merge commit `6b532ab`) and the follow-up br
 | GitHub Actions in `security.yml` pinned to tags, not commit SHAs | Low–Med | Open |
 | `guard-tools.py` itself is not in `hooks.sha256` (protected by sandbox and deny rules only) | Low | Open |
 | Maintainer-only `excludedCommands` and `allow` rules in the gitignored `settings.local.json` let git and `gh` run outside the sandbox, without prompts, on the maintainer's machine; the guard and deny rules still apply | Low | Accepted (documented in CLAUDE.md) |
-| `git push`, `gh pr create` and `gh pr merge` no longer have `ask` rules in the shared settings (they are blocked by the sandbox in forks). Until branch protection is on, the merge gate is ship-branch's "Merge" question only, which the model enforces | Medium | Accepted by the maintainer; branch protection is the fix |
+| `git push`, `gh pr create` and `gh pr merge` no longer have `ask` rules in the shared settings (they are blocked by the sandbox in forks). Until branch protection is on, nothing outside the model stops a merge, and since 2026-11-24 ship-branch merges on green CI without asking | Medium | Accepted by the maintainer; branch protection is the fix |
