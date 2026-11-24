@@ -16,7 +16,7 @@ By default the Bash sandbox refuses writes inside `.git/` and hides `gh`'s login
 - Prepare everything it needs (message and body files under `artifacts/`), then give the user the exact command as `! <command>` and wait for its output before the next step.
 - Steps that only read (`git status`, `git log`, `git diff`, the self-test) still run here.
 
-A maintainer can let these exact commands run outside the sandbox on their own machine with `sandbox.excludedCommands` in the gitignored `.claude/settings.local.json` (see CLAUDE.md, "Maintainer settings"). The guard and the ask rules still apply to them. Never suggest that file to anyone as a fix for a single failed step.
+A maintainer can let these exact commands run outside the sandbox on their own machine with `sandbox.excludedCommands` in the gitignored `.claude/settings.local.json` (see CLAUDE.md, "Maintainer settings"). The guard and the deny rules still apply to them. Never suggest that file to anyone as a fix for a single failed step.
 
 ## Steps
 
@@ -24,7 +24,7 @@ A maintainer can let these exact commands run outside the sandbox on their own m
 2. `git log --oneline --no-color claude-design-features..HEAD` and say what will ship. If it's empty, there's nothing to merge.
 3. `bash .claude/hooks/test-guard.sh`. If it reports any failure, stop and show the failing lines. Do not push a branch that breaks the guard.
 4. Committing, if needed: the guard reads the `<...>` around a co-author email as a redirect. Write the message with the Write tool to `artifacts/commit-msg.txt` (gitignored), then `git commit -F artifacts/commit-msg.txt`.
-5. `git push origin <branch>` (settings.json asks the user before every push). Don't pass `-u`: it writes `.git/config`, which the sandbox denies. If the user wants upstream tracking, they run `! git branch --set-upstream-to=origin/<branch>`.
+5. `git push origin <branch>`. Don't pass `-u`: it writes `.git/config`, which the sandbox denies. If the user wants upstream tracking, they run `! git branch --set-upstream-to=origin/<branch>`.
 6. Write the PR description with the Write tool to `artifacts/pr-body.md` (gitignored), then `gh pr create --repo crywolfe/claude-code-design --base claude-design-features --head <branch> --title "..." --body-file artifacts/pr-body.md`
    - Always pass `--repo crywolfe/claude-code-design`; the guard refuses `gh pr` / `gh issue` without it.
    - No body file outside the project. End the body with `🤖 Generated with Claude Code`.

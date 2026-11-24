@@ -119,10 +119,7 @@
       "Edit(tools/**)",
       "Edit(.github/**)",
       "Edit(package.json)",
-      "Edit(package-lock.json)",
-      "Bash(git push:*)",
-      "Bash(gh pr create:*)",
-      "Bash(gh pr merge:*)"
+      "Edit(package-lock.json)"
     ]
   },
   "sandbox": {
