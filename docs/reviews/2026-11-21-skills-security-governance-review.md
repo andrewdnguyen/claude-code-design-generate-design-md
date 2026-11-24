@@ -242,3 +242,43 @@ The high-risk skills get full entries. The rest are in the compact table in §2.
 8. **Audit logging (X-06).** Have both hooks append JSONL decisions (timestamp, tool, input SHA-256, decision, rule) to a path the agent cannot write. Record the skill-set git SHA at session start. Record SHA-256 manifests for publish, sync and handoff.
 9. **Single source and release integrity for the plugin (X-09, X-10).** Generate `plugin/` from `.claude/` with a CI drift check. Install `chrome-devtools-mcp` from the lockfile instead of `npx -y`. Produce an SBOM and signed tag per release. Ship a SECURITY.md, and make the managed settings a documented install step.
 10. **Measure (X-11).** Add an injection eval for each ingest path (repo config, Figma text layer, PPTX slide, image text, page comment, remote design-system file), plus guard-bypass regression cases. Run them with `test-guard.sh` in CI as a merge gate. Add X-01 to X-04 to the trust-map register and reconcile its "written, not applied" status with security-architecture.html.
+
+---
+
+## 5. Remediation status (updated 2026-11-24)
+
+Status from the merged code (PR #8, merge commit `6b532ab`) and the follow-up branch, checked by reading the code and running both guard self-tests. The fixes have not yet had an adversarial bypass review.
+
+| ID | Priority | Status | Where |
+|---|---|---|---|
+| X-01 | High | Fixed | guard-bash reader-command rules and tests; Bash sandbox in `settings.json` |
+| X-02 | High | Fixed | ask / deny rules and sandbox `denyWrite` on policy paths; guard policy-path list |
+| X-03 | High | Fixed | `guard-tools.py` MCP allowlist and web-tool deny; `guard-browser.py` checks every path input, refuses `upload_file` |
+| X-04 | High | Fixed | `onFailure: block` on every hook; hook hashes pinned in `.claude/hooks/hooks.sha256` |
+| X-05 | Medium | Partly fixed | Read denies added for credential and history files; the `Write(...)` rules are kept until confirmed dead |
+| X-06 | Medium | Fixed | `.claude/audit/tool-calls.jsonl` (input hash, never the input) and a session-start record |
+| X-07 | Medium | **Open** | Guidance only (doctor, SECURITY.md, ingest skills). Tokens are still the user's full-scope tokens |
+| X-08 | Medium | Fixed | `scripts/validate-pending.mjs`, `scripts/prepare-publish.mjs` |
+| X-09 | Medium | Partly fixed | `tools/sync-plugin.mjs` and its CI check; CODEOWNERS. **Branch protection is not configured yet** |
+| X-10 | Medium | Fixed | Exact pins, lockfile, `npm ci --ignore-scripts` in CI, `.mcp.json` uses `npx --no-install`. `npm audit` reports 13 high advisories, not yet triaged |
+| X-11 | Medium | Partly fixed | Invalid run removed, one new injection eval. No valid eval run yet |
+| X-12 | Low–Med | Open | |
+| X-13 | Low–Med | Partly fixed | `SECURITY.md`, `plugin/SECURITY.md`, this table |
+| X-14 | Medium | Fixed | `evaluate_script` pre-approvals removed; `disallowed-tools` on ingest skills and generate-design-md |
+| S-01 | High | Partly fixed | ship-branch: self-test, green CI, explicit "Merge"; guard limits `gh` to the fork. Needs branch protection |
+| S-02 | High | Fixed | publish uses `ArtifactComments`, runs the scan script, records SHA-256 |
+| S-03 | Medium | Fixed (follow-up) | Classification question before push; append-only `sync-log/` with file hashes |
+| S-04 | Medium | Fixed (follow-up) | Commit SHA and per-file SHA-256 recorded; read-only token guidance. Injection eval still missing |
+| S-05 | Medium | Fixed | `-L` with `-H` refused (PR #8); `fileKey` / `nodeId` validated (follow-up) |
+| S-13 | Medium | Fixed | apply-tweaks logs previous values and uses the shared validator |
+| S-21 | Medium | Fixed | `npx --no-install`, fix loop capped at 3, `disallowed-tools` |
+| `/screenshot` | Medium | Fixed (follow-up) | Output paths enforced by guard-browser; step JS needs the user's confirmation |
+
+**New since the review**
+
+| Item | Priority | Status |
+|---|---|---|
+| 13 high-severity `npm audit` advisories in the dependency tree | Medium | Open |
+| GitHub Actions in `security.yml` pinned to tags, not commit SHAs | Low–Med | Open |
+| `guard-tools.py` itself is not in `hooks.sha256` (protected by sandbox and deny rules only) | Low | Open |
+| Maintainer-only `excludedCommands` in the gitignored `settings.local.json` let git and `gh` run outside the sandbox on the maintainer's machine; the guard and ask rules still apply | Low | Accepted (documented in CLAUDE.md) |

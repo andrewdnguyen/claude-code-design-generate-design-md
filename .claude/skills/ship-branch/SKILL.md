@@ -7,7 +7,16 @@ description: Push the current branch, open a PR into claude-design-features on t
 
 Gets a finished branch into `claude-design-features` (the fork's default branch, what the user calls "main") inside the limits of `.claude/hooks/guard-bash.sh`.
 
-The merge is a human decision. This skill never merges without an explicit yes from the user in this turn, never passes `--admin` or `--auto`, and never merges with failing or pending checks. Branch protection on GitHub (required `security` check) is the backstop if any of this is skipped.
+The merge is a human decision. This skill never merges without an explicit yes from the user in this turn, never passes `--admin` or `--auto`, and never merges with failing or pending checks. Branch protection on GitHub (required `checks` status check from the `security` workflow) is the backstop if any of this is skipped.
+
+## Sandbox
+
+By default the Bash sandbox refuses writes inside `.git/` and hides `gh`'s login, so `git checkout -b`, `git add`, `git commit`, `git push` and every `gh` command fail with `Operation not permitted` (or `failed to read configuration`). That is expected in a fresh checkout or fork. When a step fails that way:
+- Don't retry it, change its form, or look for another route.
+- Prepare everything it needs (message and body files under `artifacts/`), then give the user the exact command as `! <command>` and wait for its output before the next step.
+- Steps that only read (`git status`, `git log`, `git diff`, the self-test) still run here.
+
+A maintainer can let these exact commands run outside the sandbox on their own machine with `sandbox.excludedCommands` in the gitignored `.claude/settings.local.json` (see CLAUDE.md, "Maintainer settings"). The guard and the ask rules still apply to them. Never suggest that file to anyone as a fix for a single failed step.
 
 ## Steps
 
@@ -16,9 +25,10 @@ The merge is a human decision. This skill never merges without an explicit yes f
 3. `bash .claude/hooks/test-guard.sh`. If it reports any failure, stop and show the failing lines. Do not push a branch that breaks the guard.
 4. Committing, if needed: the guard reads the `<...>` around a co-author email as a redirect. Write the message with the Write tool to `artifacts/commit-msg.txt` (gitignored), then `git commit -F artifacts/commit-msg.txt`.
 5. `git push origin <branch>` (settings.json asks the user before every push). Don't pass `-u`: it writes `.git/config`, which the sandbox denies. If the user wants upstream tracking, they run `! git branch --set-upstream-to=origin/<branch>`.
-6. `gh pr create --repo crywolfe/claude-code-design --base claude-design-features --head <branch> --title "..." --body "..."`
+6. Write the PR description with the Write tool to `artifacts/pr-body.md` (gitignored), then `gh pr create --repo crywolfe/claude-code-design --base claude-design-features --head <branch> --title "..." --body-file artifacts/pr-body.md`
    - Always pass `--repo crywolfe/claude-code-design`; the guard refuses `gh pr` / `gh issue` without it.
-   - No URLs in the body (guard blocks them), and no body file outside the project. End the body with `🤖 Generated with Claude Code`.
+   - No body file outside the project. End the body with `🤖 Generated with Claude Code`.
+   - The guard reads the whole command line, so a title containing a blocked command name as a word (`security`, `open`, `kill`, `install`, `patch`, …) is refused. Reword the title; keep such words in the body file.
    - Don't use the word "open" as a bare argument (for example `--state open`), because the guard parses it as the `open` command.
 7. `gh pr checks <n> --repo crywolfe/claude-code-design`. If any check failed, stop and report it. If checks are still pending, tell the user and stop; they can say "merge it" again once CI finishes.
 8. Review gate. Run `git diff --stat claude-design-features...HEAD` and `git diff --name-only claude-design-features...HEAD`. List any changed file under these policy paths separately and first:

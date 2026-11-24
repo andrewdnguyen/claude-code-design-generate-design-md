@@ -2,7 +2,7 @@
 name: ingest-github
 description: Clone a GitHub repo and extract design tokens (colors, fonts, spacing) from its codebase. Use when user gives a github.com URL and wants a design system or design work rooted in the repo's style.
 argument-hint: <github-url>
-allowed-tools: Read Write Glob Grep Bash(which gh) Bash(gh repo clone:*) Bash(mkdir -p /tmp/cd-ingest-:*) Bash(mkdir -p artifacts/ingested) Bash(rm -rf /tmp/cd-ingest-:*) Bash(realpath:*) Bash(basename:*)
+allowed-tools: Read Write Glob Grep Bash(which gh) Bash(gh repo clone:*) Bash(mkdir -p /tmp/cd-ingest-:*) Bash(mkdir -p artifacts/ingested) Bash(rm -rf /tmp/cd-ingest-:*) Bash(realpath:*) Bash(basename:*) Bash(shasum -a 256 /tmp/cd-ingest-:*)
 disallowed-tools: WebFetch WebSearch Artifact ArtifactComments ArtifactData DesignSync Agent
 ---
 
@@ -30,6 +30,11 @@ Pull a repo into a temp location and extract design tokens. No manual `git clone
    Bash(gh repo clone <owner>/<repo> /tmp/cd-ingest-<slug>/<repo> -- --depth 1 --branch <ref>)
    ```
 
+   **Record the commit** that was cloned (a branch name moves; a commit doesn't). Use `Read`, not `git`:
+   - `Read /tmp/cd-ingest-<slug>/<repo>/.git/HEAD`. If it is a 40-character hex string, that is the commit.
+   - If it starts with `ref: `, `Read /tmp/cd-ingest-<slug>/<repo>/.git/<that ref>`; if that file doesn't exist, `Read .../.git/packed-refs` and take the hash on the line that ends with that ref.
+   - If none of this yields a 40-character hex string, record `"commit": null` and tell the user the provenance is incomplete.
+
 3. **Find token files via Glob** (in clone path):
    - `**/theme.{ts,tsx,js,jsx,json}`
    - `**/tokens.{css,scss,json}`
@@ -48,6 +53,9 @@ Pull a repo into a temp location and extract design tokens. No manual `git clone
    - **Spacing**: numeric scales in Tailwind config, CSS vars with `--space-*` / `--spacing-*` / `--gap-*`
    - **Radii**: CSS vars with `--radius-*` / `--rounded-*`, Tailwind `borderRadius` config
 
+   Hash every file you read, in one command, so the output can be traced to exact bytes:
+   `Bash(shasum -a 256 /tmp/cd-ingest-<slug>/<repo>/<file1> /tmp/cd-ingest-<slug>/<repo>/<file2> ...)`
+
 5. **Write structured output** (`Bash(mkdir -p artifacts/ingested)` first):
    ```
    artifacts/ingested/<repo>-tokens.json
@@ -55,7 +63,10 @@ Pull a repo into a temp location and extract design tokens. No manual `git clone
    Schema:
    ```json
    {
-     "source": { "url": "...", "ref": "...", "ingested_at": "2026-04-20T..." },
+     "source": {
+       "url": "...", "ref": "...", "commit": "<40-hex or null>", "ingested_at": "2026-04-20T...",
+       "files": [ { "path": "<path relative to the repo root>", "sha256": "..." } ]
+     },
      "colors": { "primary": "#...", "accent": "#...", "bg": "#...", "text": "#...", "semantic": {...}, "all": {...} },
      "fonts": { "display": "...", "body": "...", "mono": "...", "stacks": [...] },
      "spacing": [...],
@@ -77,3 +88,7 @@ Pull a repo into a temp location and extract design tokens. No manual `git clone
 - Repo private + no auth → `gh auth login` prompt
 - No tokens found → report "repo has no clear design tokens; suggest manual `AskUserQuestion` fallback or try a specific subpath"
 - Huge repo (>500MB) → warn user, offer `--subpath` to narrow
+
+## Credentials
+
+`gh repo clone` uses the user's own `gh` login, so it can read every private repo that login can. Mention once, when a clone is confirmed, that a fine-grained token with read-only repository access is enough for this skill.
