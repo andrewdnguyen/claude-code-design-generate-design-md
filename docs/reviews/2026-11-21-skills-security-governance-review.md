@@ -281,4 +281,5 @@ Status from the merged code (PR #8, merge commit `6b532ab`) and the follow-up br
 | 13 high-severity `npm audit` advisories in the dependency tree | Medium | Open |
 | GitHub Actions in `security.yml` pinned to tags, not commit SHAs | Low–Med | Open |
 | `guard-tools.py` itself is not in `hooks.sha256` (protected by sandbox and deny rules only) | Low | Open |
-| Maintainer-only `excludedCommands` in the gitignored `settings.local.json` let git and `gh` run outside the sandbox on the maintainer's machine; the guard and ask rules still apply | Low | Accepted (documented in CLAUDE.md) |
+| Maintainer-only `excludedCommands` and `allow` rules in the gitignored `settings.local.json` let git and `gh` run outside the sandbox, without prompts, on the maintainer's machine; the guard and deny rules still apply | Low | Accepted (documented in CLAUDE.md) |
+| `git push`, `gh pr create` and `gh pr merge` no longer have `ask` rules in the shared settings (they are blocked by the sandbox in forks). Until branch protection is on, the merge gate is ship-branch's "Merge" question only, which the model enforces | Medium | Accepted by the maintainer; branch protection is the fix |
